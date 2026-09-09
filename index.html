@@ -685,13 +685,14 @@ function exampleSearch(){
 </div>
 
 <script>
+  alert("Atlas está cambiando el momento del día");
 function setMoment(moment) {
   const priority = document.querySelector('.priority-card');
 
   if (!priority) return;
 
   if (moment === 'morning') {
-    priority.innerHTML = `
+   priority.innerHTML = `
       <div style="font-size:28px;">🚌</div>
       <h3>Tu colectivo llega en 18 min</h3>
       <p>El próximo pasa en 30 min.</p>
