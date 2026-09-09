@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas 1.0</title>
+
+<style>
+
+    {
+
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f4f5f7;
+    color: #17202a;
+}
+
+.app {
+    max-width: 430px;
+    min-height: 100vh;
+    margin: auto;
+    background: #f7f8fa;
+    position: relative;
+    padding-bottom: 90px;
+}
+
+/* HEADER */
+
+.header {
+    background: #142536;
+    color: white;
+    padding: 34px 24px 28px;
+    border-radius: 0 0 28px 28px;
+}
+
+.header small {
+    opacity: .7;
+    font-size: 13px;
+}
+
+.header h1 {
+    font-size: 28px;
+    margin-top: 6px;
+}
+
+.header p {
+    margin-top: 7px;
+    font-size: 14px;
+    opacity: .8;
+}
+
+/* CONTENIDO */
+
+.content {
+    padding: 20px;
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #7a8490;
+    letter-spacing: .5px;
+    margin-bottom: 10px;
+}
+
+/* PRIORIDAD */
+
+.priority {
+    background: white;
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0,0,0,.07);
+    margin-bottom: 18px;
+}
+
+.priority-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.priority h2 {
+    font-size: 20px;
+}
+
+.badge {
+    background: #e9f6ef;
+    color: #287a4b;
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.priority-text {
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #58636f;
+}
+
+/* COLECTIVO */
+
+.transport {
+    margin-top: 18px;
+    background: #eef3f7;
+    border-radius: 18px;
+    padding: 15px;
+}
+
+.transport-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.transport-icon {
+    font-size: 27px;
+}
+
+.transport strong {
+    font-size: 17px;
+}
+
+.transport span {
+    display: block;
+    font-size: 12px;
+    color: #697581;
+    margin-top: 3px;
+}
+
+.next {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #66717c;
+}
+
+/* TIEMPO */
+
+.time-card {
+    background: #142536;
+    color: white;
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 18px;
+}
+
+.time-card h3 {
+    font-size: 15px;
+}
+
+.time-card .big {
+    font-size: 30px;
+    font-weight: 700;
+    margin-top: 5px;
+}
+
+.time-card p {
+    font-size: 12px;
+    opacity: .7;
+}
+
+/* CARDS */
+
+.card {
+    background: white;
+    padding: 17px;
+    border-radius: 19px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.045);
+}
+
+.card-icon {
+    width: 42px;
+    height: 42px;
+    background: #eef1f4;
+    border-radius: 13px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+}
+
+.card h3 {
+    font-size: 14px;
+}
+
+.card p {
+    font-size: 12px;
+    color: #7a8490;
+    margin-top: 4px;
+}
+
+/* BOTONES */
+
+button {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.action {
+    margin-top: 13px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: #142536;
+    color: white;
+    font-weight: 600;
+}
+
+.secondary {
+    background: #eef1f4;
+    color: #142536;
+}
+
+/* PANTALLAS */
+
+.screen {
+    display: none;
+}
+
+.screen.active {
+    display: block;
+}
+
+/* KAI */
+
+.chat {
+    padding: 20px;
+}
+
+.chat-title {
+    font-size: 25px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.message {
+    max-width: 85%;
+    padding: 13px 15px;
+    border-radius: 17px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.kai {
+    background: white;
+    border-bottom-left-radius: 5px;
+}
+
+.user {
+    background: #142536;
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 5px;
+}
+
+.chat-input {
+    position: fixed;
+    bottom: 75px;
+    width: min(390px, calc(100% - 40px));
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 14px;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    outline: none;
+}
+
+.chat-input button {
+    width: 48px;
+    border-radius: 15px;
+    background: #142536;
+    color: white;
+}
+
+/* FAMILIA */
+
+.family-card {
+    background: white;
+    border-radius: 19px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #e8edf1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 13px;
+    font-weight: 700;
+}
+
+.online {
+    width: 8px;
+    height: 8px;
+    background: #43a96b;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+/* BUSCAR */
+
+.search-box {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 14px;
+    margin-top: 12px;
+    outline: none;
+}
+
+.solution {
+    margin-top: 15px;
+    background: #eef3f7;
+    border-radius: 15px;
+    padding: 15px;
+    display: none;
+}
+
+/* NAV */
+
+.nav {
+    position: fixed;
+    bottom: 0;
+    width: min(430px, 100%);
+    height: 70px;
+    background: white;
+    border-top: 1px solid #e7e9eb;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 10;
+}
+
+.nav button {
+    background: none;
+    color: #8a939c;
+    font-size: 11px;
+}
+
+.nav button.active {
+    color: #142536;
+    font-weight: 700;
+}
+
+.nav-icon {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- INICIO -->
+
+<div id="home" class="screen active">
+
+<header class="header">
+    <small>ATLAS 1.0</small>
+    <h1>¡Buen día, Gonzalo!</h1>
+    <p>Ya revisé lo importante por vos.</p>
+</header>
+
+<main class="content">
+
+<div class="section-title">PRIORIDAD AHORA</div>
+
+<div class="priority">
+
+    <div class="priority-top">
+        <h2>🚌 Tu salida</h2>
+        <div class="badge">A TIEMPO</div>
+    </div>
+
+    <p class="priority-text">
+        Tu próximo colectivo pasa en <strong>18 minutos</strong>.
+        Todavía tenés tiempo para prepararte tranquilo.
+    </p>
+
+    <div class="transport">
+
+        <div class="transport-row">
+            <div class="transport-icon">🚌</div>
+
+            <div>
+                <strong>18 minutos</strong>
+                <span>Próximo colectivo</span>
+            </div>
+        </div>
+
+        <div class="next">
+            Siguiente: <strong>30 minutos</strong>
+        </div>
+
+        <button class="action secondary" onclick="showMessage('Recorrido')">
+            Ver recorrido
+        </button>
+
+    </div>
+
+</div>
+
+<div class="time-card">
+    <h3>☕ Tiempo disponible</h3>
+    <div class="big">12 min</div>
+    <p>Podés tomar un café antes de salir.</p>
+</div>
+
+<div class="section-title">PARA QUE NO SE TE PASE</div>
+
+<div class="card">
+    <div class="card-icon">💡</div>
+    <div>
+        <h3>Factura de luz pendiente</h3>
+        <p>Atlas te avisa antes del vencimiento.</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-icon">📅</div>
+    <div>
+        <h3>Próximo turno</h3>
+        <p>Recordatorio + documentos necesarios.</p>
+    </div>
+</div>
+
+<div class="section-title" style="margin-top:20px">
+    MÁS TARDE
+</div>
+
+<div class="card">
+    <div class="card-icon">⚽</div>
+    <div>
+        <h3>Partido esta noche</h3>
+        <p>Te lo voy a recordar cuando sea el momento.</p>
+    </div>
+</div>
+
+</main>
+</div>
+
+
+<!-- KAI -->
+
+<div id="kai" class="screen">
+
+<header class="header">
+    <small>ATLAS</small>
+    <h1>Kai</h1>
+    <p>Estoy para ayudarte a resolver.</p>
+</header>
+
+<div class="chat">
+
+    <div class="chat-title">
+        ¿Qué necesitás solucionar?
+    </div>
+
+    <div class="message kai">
+        Hola Gonzalo 👋<br><br>
+        Contame qué necesitás y vemos cómo resolverlo.
+    </div>
+
+    <div id="chatMessages"></div>
+
+</div>
+
+</div>
+
+
+<!-- FAMILIA -->
+
+<div id="family" class="screen">
+
+<header class="header">
+    <small>ATLAS</small>
+    <h1>Familia</h1>
+    <p>Más cerca, aunque estén lejos.</p>
+</header>
+
+<div class="content">
+
+    <div class="family-card">
+        <div class="avatar">S</div>
+        <div>
+            <strong>Silvia</strong>
+            <p><span class="online"></span>En movimiento</p>
+        </div>
+    </div>
+
+    <div class="family-card">
+        <div class="avatar">U</div>
+        <div>
+            <strong>Uma</strong>
+            <p><span class="online"></span>En la universidad</p>
+        </div>
+    </div>
+
+    <div class="family-card">
+        <div class="avatar">T</div>
+        <div>
+            <strong>Tomi</strong>
+            <p>Última actividad hace 20 min</p>
+        </div>
+    </div>
+
+    <div class="family-card">
+        <div class="avatar">M</div>
+        <div>
+            <strong>Mateo</strong>
+            <p><span class="online"></span>En casa</p>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+
+<!-- BUSCAR -->
+
+<div id="search" class="screen">
+
+<header class="header">
+    <small>ATLAS</small>
+    <h1>Buscar</h1>
+    <p>Decime qué necesitás resolver.</p>
+</header>
+
+<div class="content">
+
+    <div class="search-box">
+
+        <strong>¿Qué pasó?</strong>
+
+        <input
+            id="problemInput"
+            placeholder="Ej: Se me rompió la heladera..."
+        >
+
+        <button class="action" onclick="solveProblem()">
+            Ayudame a resolverlo
+        </button>
+
+        <div id="solution" class="solution">
+            <strong>Perfecto. Me encargo. 👌</strong>
+
+            <p style="margin-top:8px;font-size:13px;">
+                Voy a buscar opciones, comparar precios,
+                cuotas, beneficios y ubicación.
+            </p>
+
+            <button class="action secondary" onclick="showMessage('Buscar opciones')">
+                Ver opciones
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+
+<!-- NAVEGACIÓN -->
+
+<nav class="nav">
+
+    <button class="active" onclick="go('home', this)">
+        <span class="nav-icon">⌂</span>
+        Inicio
+    </button>
+
+    <button onclick="go('kai', this)">
+        <span class="nav-icon">✦</span>
+        Kai
+    </button>
+
+    <button onclick="go('family', this)">
+        <span class="nav-icon">♧</span>
+        Familia
+    </button>
+
+    <button onclick="go('search', this)">
+        <span class="nav-icon">⌕</span>
+        Buscar
+    </button>
+
+</nav>
+
+</div>
+
+
+<script>
+
+function go(screen, button) {
+
+    document.querySelectorAll(".screen").forEach(function(el) {
+        el.classList.remove("active");
+    });
+
+    document.getElementById(screen).classList.add("active");
+
+    document.querySelectorAll(".nav button").forEach(function(el) {
+        el.classList.remove("active");
+    });
+
+    button.classList.add("active");
+
+    window.scrollTo(0,0);
+}
+
+
+function solveProblem() {
+
+    const input = document.getElementById("problemInput");
+    const solution = document.getElementById("solution");
+
+    if(input.value.trim() === "") {
+        input.focus();
+        return;
+    }
+
+    solution.style.display = "block";
+}
+
+
+function sendMessage() {
+
+    const input = document.getElementById("messageInput");
+    const messages = document.getElementById("chatMessages");
+
+    if(input.value.trim() === "") return;
+
+    const userMessage = document.createElement("div");
+
+    userMessage.className = "message user";
+    userMessage.innerText = input.value;
+
+    messages.appendChild(userMessage);
+
+    const text = input.value.toLowerCase();
+
+    input.value = "";
+
+    setTimeout(function() {
+
+        const kaiMessage = document.createElement("div");
+
+        kaiMessage.className = "message kai";
+
+        if(text.includes("heladera")) {
+
+            kaiMessage.innerHTML =
+            "Entendido. No te preocupes.<br><br>" +
+            "Voy a ayudarte a encontrar una heladera que tenga sentido para vos, " +
+            "comparando precio, cuotas y beneficios.";
+
+        } else {
+
+            kaiMessage.innerHTML =
+            "Perfecto. Contame un poco más y vemos juntos cómo resolverlo.";
+
+        }
+
+        messages.appendChild(kaiMessage);
+
+    }, 500);
+}
+
+
+function showMessage(text) {
+
+    alert("Atlas: " + text);
+}
+
+</script>
+
+
+<!-- INPUT DE KAI -->
+
+<div id="chatInputContainer" class="chat-input hidden">
+    <input
+        id="messageInput"
+        placeholder="Escribile a Kai..."
+        onkeydown="if(event.key==='Enter') sendMessage()"
+    >
+    <button onclick="sendMessage()">➤</button>
+</div>
+
+
+<script>
+
+document.querySelectorAll(".nav button")[1].addEventListener("click", function() {
+    document.getElementById("chatInputContainer").classList.remove("hidden");
+});
+
+document.querySelectorAll(".nav button")[0].addEventListener("click", function() {
+    document.getElementById("chatInputContainer").classList.add("hidden");
+});
+
+document.querySelectorAll(".nav button")[2].addEventListener("click", function() {
+    document.getElementById("chatInputContainer").classList.add("hidden");
+});
+
+document.querySelectorAll(".nav button")[3].addEventListener("click", function() {
+    document.getElementById("chatInputContainer").classList.add("hidden");
+});
+
+</script>
+
+</body>
+</html>
