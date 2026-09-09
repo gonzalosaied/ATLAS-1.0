@@ -6,379 +6,264 @@
 <title>Atlas 1.0</title>
 
 <style>
-
-    {
-
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:#eef1f4;
+  font-family:Arial,Helvetica,sans-serif;
+  color:#26313d;
 }
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f4f5f7;
-    color: #17202a;
+.app{
+  width:390px;
+  min-height:844px;
+  margin:30px auto;
+  background:#f8f9fa;
+  border-radius:30px;
+  overflow:hidden;
+  box-shadow:0 15px 45px #0002;
+  position:relative;
 }
-
-.app {
-    max-width: 430px;
-    min-height: 100vh;
-    margin: auto;
-    background: #f7f8fa;
-    position: relative;
-    padding-bottom: 90px;
+header{
+  background:linear-gradient(145deg,#263442,#657889);
+  color:white;
+  padding:30px 24px 38px;
+  border-radius:0 0 38px 38px;
 }
-
-/* HEADER */
-
-.header {
-    background: #142536;
-    color: white;
-    padding: 34px 24px 28px;
-    border-radius: 0 0 28px 28px;
+.logo{
+  font-size:15px;
+  font-weight:bold;
+  opacity:.8;
+  letter-spacing:.5px;
 }
-
-.header small {
-    opacity: .7;
-    font-size: 13px;
+h1{
+  margin:22px 0 8px;
+  font-size:30px;
 }
-
-.header h1 {
-    font-size: 28px;
-    margin-top: 6px;
+.subtitle{
+  font-size:16px;
+  opacity:.9;
 }
-
-.header p {
-    margin-top: 7px;
-    font-size: 14px;
-    opacity: .8;
+.content{
+  padding:25px 20px 90px;
 }
-
-/* CONTENIDO */
-
-.content {
-    padding: 20px;
+.section-title{
+  font-size:14px;
+  font-weight:bold;
+  letter-spacing:.7px;
+  color:#8a949d;
+  margin:5px 0 15px;
 }
-
-.section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #7a8490;
-    letter-spacing: .5px;
-    margin-bottom: 10px;
+.card{
+  background:white;
+  border-radius:22px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 4px 16px #0000000b;
 }
-
-/* PRIORIDAD */
-
-.priority {
-    background: white;
-    border-radius: 22px;
-    padding: 20px;
-    box-shadow: 0 8px 25px rgba(0,0,0,.07);
-    margin-bottom: 18px;
+.priority{
+  border-left:5px solid #8fb9aa;
 }
-
-.priority-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
-
-.priority h2 {
-    font-size: 20px;
+.card-title{
+  font-size:19px;
+  font-weight:bold;
 }
-
-.badge {
-    background: #e9f6ef;
-    color: #287a4b;
-    padding: 6px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
+.badge{
+  background:#e7f2ed;
+  color:#568a75;
+  border-radius:20px;
+  padding:7px 11px;
+  font-size:11px;
+  font-weight:bold;
 }
-
-.priority-text {
-    margin-top: 15px;
-    font-size: 14px;
-    line-height: 1.5;
-    color: #58636f;
+.big{
+  font-size:30px;
+  font-weight:bold;
+  margin-top:15px;
 }
-
-/* COLECTIVO */
-
-.transport {
-    margin-top: 18px;
-    background: #eef3f7;
-    border-radius: 18px;
-    padding: 15px;
+.muted{
+  color:#8b949c;
+  font-size:14px;
 }
-
-.transport-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.bus-row{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-top:20px;
 }
-
-.transport-icon {
-    font-size: 27px;
+.icon{
+  font-size:28px;
 }
-
-.transport strong {
-    font-size: 17px;
+button{
+  border:0;
+  border-radius:14px;
+  padding:12px 15px;
+  font-weight:bold;
+  cursor:pointer;
 }
-
-.transport span {
-    display: block;
-    font-size: 12px;
-    color: #697581;
-    margin-top: 3px;
+.primary{
+  background:#647b8b;
+  color:white;
+  width:100%;
+  margin-top:16px;
 }
-
-.next {
-    margin-top: 12px;
-    font-size: 12px;
-    color: #66717c;
+.secondary{
+  background:#edf1f3;
+  color:#52616d;
 }
-
-/* TIEMPO */
-
-.time-card {
-    background: #142536;
-    color: white;
-    border-radius: 20px;
-    padding: 18px;
-    margin-bottom: 18px;
+.time-card{
+  background:linear-gradient(145deg,#70899b,#9aaeba);
+  color:white;
 }
-
-.time-card h3 {
-    font-size: 15px;
+.time-card .muted{color:#eef3f5}
+.bill{
+  display:flex;
+  align-items:center;
+  gap:14px;
 }
-
-.time-card .big {
-    font-size: 30px;
-    font-weight: 700;
-    margin-top: 5px;
+.bill-icon{
+  width:45px;
+  height:45px;
+  border-radius:14px;
+  background:#f1e8e4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
 }
-
-.time-card p {
-    font-size: 12px;
-    opacity: .7;
+.bottom{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:72px;
+  background:white;
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+  border-top:1px solid #eee;
 }
-
-/* CARDS */
-
-.card {
-    background: white;
-    padding: 17px;
-    border-radius: 19px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    box-shadow: 0 4px 15px rgba(0,0,0,.045);
+.nav{
+  text-align:center;
+  color:#8b959e;
+  font-size:11px;
+  cursor:pointer;
 }
-
-.card-icon {
-    width: 42px;
-    height: 42px;
-    background: #eef1f4;
-    border-radius: 13px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 20px;
+.nav.active{
+  color:#536f80;
+  font-weight:bold;
 }
-
-.card h3 {
-    font-size: 14px;
+.nav-icon{
+  display:block;
+  font-size:21px;
+  margin-bottom:3px;
 }
-
-.card p {
-    font-size: 12px;
-    color: #7a8490;
-    margin-top: 4px;
+.screen{display:none}
+.screen.active{display:block}
+.chat{
+  min-height:610px;
 }
-
-/* BOTONES */
-
-button {
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
+.message{
+  padding:13px 15px;
+  border-radius:18px;
+  max-width:82%;
+  margin:10px 0;
+  font-size:14px;
+  line-height:1.4;
 }
-
-.action {
-    margin-top: 13px;
-    width: 100%;
-    padding: 12px;
-    border-radius: 12px;
-    background: #142536;
-    color: white;
-    font-weight: 600;
+.kai{
+  background:white;
+  border-bottom-left-radius:5px;
 }
-
-.secondary {
-    background: #eef1f4;
-    color: #142536;
+.user{
+  background:#657c8c;
+  color:white;
+  margin-left:auto;
+  border-bottom-right-radius:5px;
 }
-
-/* PANTALLAS */
-
-.screen {
-    display: none;
+.chat-input{
+  display:flex;
+  gap:8px;
+  margin-top:20px;
 }
-
-.screen.active {
-    display: block;
+.chat-input input{
+  flex:1;
+  border:1px solid #ddd;
+  border-radius:15px;
+  padding:13px;
+  outline:none;
 }
-
-/* KAI */
-
-.chat {
-    padding: 20px;
+.family-item{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  padding:14px 0;
+  border-bottom:1px solid #eee;
 }
-
-.chat-title {
-    font-size: 25px;
-    font-weight: 700;
-    margin-bottom: 20px;
+.avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:#dce5e9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
 }
-
-.message {
-    max-width: 85%;
-    padding: 13px 15px;
-    border-radius: 17px;
-    margin-bottom: 12px;
-    font-size: 14px;
-    line-height: 1.45;
+.status{
+  margin-left:auto;
+  font-size:12px;
+  color:#6b9b87;
 }
-
-.kai {
-    background: white;
-    border-bottom-left-radius: 5px;
+.search-box{
+  background:white;
+  border-radius:18px;
+  padding:15px;
+  display:flex;
+  gap:10px;
+  box-shadow:0 4px 16px #0001;
 }
-
-.user {
-    background: #142536;
-    color: white;
-    margin-left: auto;
-    border-bottom-right-radius: 5px;
+.search-box input{
+  border:0;
+  outline:0;
+  flex:1;
+  font-size:15px;
 }
-
-.chat-input {
-    position: fixed;
-    bottom: 75px;
-    width: min(390px, calc(100% - 40px));
-    display: flex;
-    gap: 8px;
+.result{
+  background:white;
+  border-radius:18px;
+  padding:17px;
+  margin-top:15px;
 }
-
-.chat-input input {
-    flex: 1;
-    padding: 14px;
-    border-radius: 15px;
-    border: 1px solid #ddd;
-    outline: none;
+.modal{
+  position:absolute;
+  inset:0;
+  background:#26344299;
+  display:none;
+  align-items:flex-end;
 }
-
-.chat-input button {
-    width: 48px;
-    border-radius: 15px;
-    background: #142536;
-    color: white;
+.modal.show{display:flex}
+.modal-box{
+  background:white;
+  width:100%;
+  padding:25px;
+  border-radius:28px 28px 0 0;
 }
-
-/* FAMILIA */
-
-.family-card {
-    background: white;
-    border-radius: 19px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
+.close{
+  float:right;
+  background:#eee;
+  border-radius:50%;
+  width:32px;
+  height:32px;
+  padding:0;
 }
-
-.avatar {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background: #e8edf1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 13px;
-    font-weight: 700;
-}
-
-.online {
-    width: 8px;
-    height: 8px;
-    background: #43a96b;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-}
-
-/* BUSCAR */
-
-.search-box {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-}
-
-.search-box input {
-    width: 100%;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    margin-top: 12px;
-    outline: none;
-}
-
-.solution {
-    margin-top: 15px;
-    background: #eef3f7;
-    border-radius: 15px;
-    padding: 15px;
-    display: none;
-}
-
-/* NAV */
-
-.nav {
-    position: fixed;
-    bottom: 0;
-    width: min(430px, 100%);
-    height: 70px;
-    background: white;
-    border-top: 1px solid #e7e9eb;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 10;
-}
-
-.nav button {
-    background: none;
-    color: #8a939c;
-    font-size: 11px;
-}
-
-.nav button.active {
-    color: #142536;
-    font-weight: 700;
-}
-
-.nav-icon {
-    font-size: 20px;
-    display: block;
-    margin-bottom: 3px;
-}
-
-.hidden {
-    display: none;
+.small{
+  font-size:12px;
+  color:#89939b;
 }
 </style>
 </head>
@@ -388,360 +273,394 @@ button {
 <div class="app">
 
 <!-- INICIO -->
-
 <div id="home" class="screen active">
 
-<header class="header">
-    <small>ATLAS 1.0</small>
-    <h1>¡Buen día, Gonzalo!</h1>
-    <p>Ya revisé lo importante por vos.</p>
+<header>
+  <div class="logo">ATLAS 1.0</div>
+  <h1>¡Buen día, Gonzalo!</h1>
+  <div class="subtitle">Ya revisé lo importante por vos.</div>
 </header>
 
-<main class="content">
+<div class="content">
 
 <div class="section-title">PRIORIDAD AHORA</div>
 
-<div class="priority">
+<div class="card priority">
+  <div class="card-head">
+    <div class="card-title">🚌 Tu salida</div>
+    <div class="badge">A TIEMPO</div>
+  </div>
 
-    <div class="priority-top">
-        <h2>🚌 Tu salida</h2>
-        <div class="badge">A TIEMPO</div>
-    </div>
+  <p>Tu próximo colectivo pasa en <b>18 minutos</b>. Todavía tenés tiempo para prepararte tranquilo.</p>
 
-    <p class="priority-text">
-        Tu próximo colectivo pasa en <strong>18 minutos</strong>.
-        Todavía tenés tiempo para prepararte tranquilo.
-    </p>
-
-    <div class="transport">
-
-        <div class="transport-row">
-            <div class="transport-icon">🚌</div>
-
-            <div>
-                <strong>18 minutos</strong>
-                <span>Próximo colectivo</span>
-            </div>
-        </div>
-
-        <div class="next">
-            Siguiente: <strong>30 minutos</strong>
-        </div>
-
-        <button class="action secondary" onclick="showMessage('Recorrido')">
-            Ver recorrido
-        </button>
-
-    </div>
-
-</div>
-
-<div class="time-card">
-    <h3>☕ Tiempo disponible</h3>
-    <div class="big">12 min</div>
-    <p>Podés tomar un café antes de salir.</p>
-</div>
-
-<div class="section-title">PARA QUE NO SE TE PASE</div>
-
-<div class="card">
-    <div class="card-icon">💡</div>
+  <div class="bus-row">
+    <div class="icon">🚌</div>
     <div>
-        <h3>Factura de luz pendiente</h3>
-        <p>Atlas te avisa antes del vencimiento.</p>
+      <div class="big">18 min</div>
+      <div class="muted">Próximo colectivo</div>
     </div>
+  </div>
+
+  <div class="muted" style="margin-top:15px">Siguiente: 30 minutos</div>
+
+  <button class="primary" onclick="showModal('route')">
+    Ver recorrido
+  </button>
 </div>
 
-<div class="card">
-    <div class="card-icon">📅</div>
+<div class="card time-card">
+  <div class="card-title">☕ Tiempo disponible</div>
+  <div class="big">12 min</div>
+  <div class="muted">Podés tomar un café antes de salir.</div>
+</div>
+
+<div class="card" onclick="showModal('bill')" style="cursor:pointer">
+  <div class="bill">
+    <div class="bill-icon">💡</div>
     <div>
-        <h3>Próximo turno</h3>
-        <p>Recordatorio + documentos necesarios.</p>
+      <b>Factura de luz pendiente</b>
+      <div class="muted">Vence mañana</div>
     </div>
+  </div>
 </div>
 
-<div class="section-title" style="margin-top:20px">
-    MÁS TARDE
-</div>
-
-<div class="card">
-    <div class="card-icon">⚽</div>
+<div class="card" onclick="showModal('appointment')" style="cursor:pointer">
+  <div class="bill">
+    <div class="bill-icon">📅</div>
     <div>
-        <h3>Partido esta noche</h3>
-        <p>Te lo voy a recordar cuando sea el momento.</p>
+      <b>Turno familiar</b>
+      <div class="muted">Recordatorio: llevar documentación</div>
     </div>
+  </div>
 </div>
 
-</main>
+</div>
 </div>
 
 
 <!-- KAI -->
-
 <div id="kai" class="screen">
 
-<header class="header">
-    <small>ATLAS</small>
-    <h1>Kai</h1>
-    <p>Estoy para ayudarte a resolver.</p>
+<header>
+  <div class="logo">ATLAS 1.0</div>
+  <h1>Kai</h1>
+  <div class="subtitle">Estoy acá para ayudarte.</div>
 </header>
 
-<div class="chat">
+<div class="content chat">
 
-    <div class="chat-title">
-        ¿Qué necesitás solucionar?
-    </div>
-
-    <div class="message kai">
-        Hola Gonzalo 👋<br><br>
-        Contame qué necesitás y vemos cómo resolverlo.
-    </div>
-
-    <div id="chatMessages"></div>
-
+<div class="message kai">
+  Hola Gonzalo 👋<br><br>
+  ¿Qué necesitás resolver?
 </div>
 
+<div id="chatMessages"></div>
+
+<div class="card">
+  <b>Probemos algo</b>
+  <p class="muted">Escribí, por ejemplo:</p>
+  <button class="secondary" onclick="quickMessage('Se me rompió la heladera')">
+    🧊 Se me rompió la heladera
+  </button>
+</div>
+
+<div class="chat-input">
+  <input id="chatInput" placeholder="Escribile a Kai...">
+  <button class="primary" style="width:auto;margin:0" onclick="sendMessage()">Enviar</button>
+</div>
+
+</div>
 </div>
 
 
 <!-- FAMILIA -->
-
 <div id="family" class="screen">
 
-<header class="header">
-    <small>ATLAS</small>
-    <h1>Familia</h1>
-    <p>Más cerca, aunque estén lejos.</p>
+<header>
+  <div class="logo">ATLAS 1.0</div>
+  <h1>Familia</h1>
+  <div class="subtitle">Todos un poco más conectados.</div>
 </header>
 
 <div class="content">
 
-    <div class="family-card">
-        <div class="avatar">S</div>
-        <div>
-            <strong>Silvia</strong>
-            <p><span class="online"></span>En movimiento</p>
-        </div>
-    </div>
+<div class="card">
+  <div class="family-item">
+    <div class="avatar">S</div>
+    <div><b>Silvia</b><div class="muted">En el centro</div></div>
+    <div class="status">● Disponible</div>
+  </div>
 
-    <div class="family-card">
-        <div class="avatar">U</div>
-        <div>
-            <strong>Uma</strong>
-            <p><span class="online"></span>En la universidad</p>
-        </div>
-    </div>
+  <div class="family-item">
+    <div class="avatar">U</div>
+    <div><b>Uma</b><div class="muted">Universidad</div></div>
+    <div class="status">● En camino</div>
+  </div>
 
-    <div class="family-card">
-        <div class="avatar">T</div>
-        <div>
-            <strong>Tomi</strong>
-            <p>Última actividad hace 20 min</p>
-        </div>
-    </div>
+  <div class="family-item">
+    <div class="avatar">T</div>
+    <div><b>Tomi</b><div class="muted">En casa</div></div>
+    <div class="status">● Disponible</div>
+  </div>
 
-    <div class="family-card">
-        <div class="avatar">M</div>
-        <div>
-            <strong>Mateo</strong>
-            <p><span class="online"></span>En casa</p>
-        </div>
-    </div>
-
+  <div class="family-item">
+    <div class="avatar">M</div>
+    <div><b>Mateo</b><div class="muted">Estudiando</div></div>
+    <div class="status">● Ocupado</div>
+  </div>
 </div>
 
+<div class="card">
+  <b>💬 Aviso familiar</b>
+  <p class="muted">Atlas puede avisarte cuando alguien llegue a destino, si esa persona decidió compartir su ubicación.</p>
+</div>
+
+</div>
 </div>
 
 
 <!-- BUSCAR -->
-
 <div id="search" class="screen">
 
-<header class="header">
-    <small>ATLAS</small>
-    <h1>Buscar</h1>
-    <p>Decime qué necesitás resolver.</p>
+<header>
+  <div class="logo">ATLAS 1.0</div>
+  <h1>Buscar</h1>
+  <div class="subtitle">Decime qué necesitás y lo resolvemos.</div>
 </header>
 
 <div class="content">
 
-    <div class="search-box">
-
-        <strong>¿Qué pasó?</strong>
-
-        <input
-            id="problemInput"
-            placeholder="Ej: Se me rompió la heladera..."
-        >
-
-        <button class="action" onclick="solveProblem()">
-            Ayudame a resolverlo
-        </button>
-
-        <div id="solution" class="solution">
-            <strong>Perfecto. Me encargo. 👌</strong>
-
-            <p style="margin-top:8px;font-size:13px;">
-                Voy a buscar opciones, comparar precios,
-                cuotas, beneficios y ubicación.
-            </p>
-
-            <button class="action secondary" onclick="showMessage('Buscar opciones')">
-                Ver opciones
-            </button>
-        </div>
-
-    </div>
-
+<div class="search-box">
+  <input id="searchInput" placeholder="¿Qué necesitás comprar o resolver?">
+  <button class="secondary" onclick="searchThing()">Buscar</button>
 </div>
 
+<div id="searchResult"></div>
+
+<div class="card" style="margin-top:18px">
+  <b>Ejemplo</b>
+  <p class="muted">“Se me rompió la heladera, necesito comprar una.”</p>
+  <button class="primary" onclick="exampleSearch()">Probar ejemplo</button>
+</div>
+
+</div>
+</div>
+
+
+<!-- MODAL -->
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <button class="close" onclick="closeModal()">×</button>
+    <div id="modalContent"></div>
+  </div>
 </div>
 
 
 <!-- NAVEGACIÓN -->
+<div class="bottom">
 
-<nav class="nav">
+<div class="nav active" onclick="navigate('home',this)">
+  <span class="nav-icon">🏠</span>
+  Inicio
+</div>
 
-    <button class="active" onclick="go('home', this)">
-        <span class="nav-icon">⌂</span>
-        Inicio
-    </button>
+<div class="nav" onclick="navigate('kai',this)">
+  <span class="nav-icon">🤖</span>
+  Kai
+</div>
 
-    <button onclick="go('kai', this)">
-        <span class="nav-icon">✦</span>
-        Kai
-    </button>
+<div class="nav" onclick="navigate('family',this)">
+  <span class="nav-icon">👨‍👩‍👧‍👦</span>
+  Familia
+</div>
 
-    <button onclick="go('family', this)">
-        <span class="nav-icon">♧</span>
-        Familia
-    </button>
+<div class="nav" onclick="navigate('search',this)">
+  <span class="nav-icon">🔎</span>
+  Buscar
+</div>
 
-    <button onclick="go('search', this)">
-        <span class="nav-icon">⌕</span>
-        Buscar
-    </button>
-
-</nav>
+</div>
 
 </div>
 
 
 <script>
 
-function go(screen, button) {
+function navigate(screen,element){
 
-    document.querySelectorAll(".screen").forEach(function(el) {
-        el.classList.remove("active");
-    });
+  document.querySelectorAll('.screen').forEach(s=>{
+    s.classList.remove('active');
+  });
 
-    document.getElementById(screen).classList.add("active");
+  document.getElementById(screen).classList.add('active');
 
-    document.querySelectorAll(".nav button").forEach(function(el) {
-        el.classList.remove("active");
-    });
+  document.querySelectorAll('.nav').forEach(n=>{
+    n.classList.remove('active');
+  });
 
-    button.classList.add("active");
-
-    window.scrollTo(0,0);
+  element.classList.add('active');
 }
 
 
-function solveProblem() {
+function showModal(type){
 
-    const input = document.getElementById("problemInput");
-    const solution = document.getElementById("solution");
+  const modal=document.getElementById('modal');
+  const content=document.getElementById('modalContent');
 
-    if(input.value.trim() === "") {
-        input.focus();
-        return;
+  if(type==='route'){
+    content.innerHTML=`
+      <h2>🚌 Tu recorrido</h2>
+      <p><b>Próximo colectivo:</b> en 18 minutos.</p>
+      <p class="muted">Parada habitual → Centro → destino habitual</p>
+      <div class="card">
+        <b>Próximo</b><br>
+        18 minutos
+      </div>
+      <div class="card">
+        <b>Siguiente</b><br>
+        30 minutos
+      </div>
+      <button class="primary" onclick="closeModal()">Listo</button>
+    `;
+  }
+
+  if(type==='bill'){
+    content.innerHTML=`
+      <h2>💡 Factura de luz</h2>
+      <p>La factura está pendiente y vence <b>mañana</b>.</p>
+      <div class="card">
+        <div class="small">IMPORTE</div>
+        <div class="big">$ 48.500</div>
+      </div>
+      <button class="primary" onclick="alert('En una versión real, Atlas te llevaría al medio de pago.')">
+        Pagar ahora
+      </button>
+    `;
+  }
+
+  if(type==='appointment'){
+    content.innerHTML=`
+      <h2>📅 Antes de salir</h2>
+      <p>Atlas revisó tu turno.</p>
+      <div class="card">
+        <b>No te olvides:</b>
+        <p>✓ Documentación</p>
+        <p>✓ Credencial</p>
+        <p>✓ Libreta correspondiente</p>
+      </div>
+      <button class="primary" onclick="closeModal()">Entendido</button>
+    `;
+  }
+
+  modal.classList.add('show');
+}
+
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('show');
+}
+
+
+function sendMessage(){
+
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+
+  if(!text)return;
+
+  addMessage(text,'user');
+
+  input.value='';
+
+  setTimeout(()=>{
+    let response='Entiendo. Dejame revisarlo y te ayudo a encontrar la mejor solución.';
+
+    if(text.toLowerCase().includes('heladera')){
+      response='Perfecto. No hace falta que busques por todos lados. Puedo comparar opciones, precios, cuotas, descuentos de tus tarjetas y disponibilidad para ayudarte a elegir.';
     }
 
-    solution.style.display = "block";
+    addMessage(response,'kai');
+
+  },500);
 }
 
 
-function sendMessage() {
+function quickMessage(text){
 
-    const input = document.getElementById("messageInput");
-    const messages = document.getElementById("chatMessages");
+  document.getElementById('chatInput').value=text;
+  sendMessage();
 
-    if(input.value.trim() === "") return;
-
-    const userMessage = document.createElement("div");
-
-    userMessage.className = "message user";
-    userMessage.innerText = input.value;
-
-    messages.appendChild(userMessage);
-
-    const text = input.value.toLowerCase();
-
-    input.value = "";
-
-    setTimeout(function() {
-
-        const kaiMessage = document.createElement("div");
-
-        kaiMessage.className = "message kai";
-
-        if(text.includes("heladera")) {
-
-            kaiMessage.innerHTML =
-            "Entendido. No te preocupes.<br><br>" +
-            "Voy a ayudarte a encontrar una heladera que tenga sentido para vos, " +
-            "comparando precio, cuotas y beneficios.";
-
-        } else {
-
-            kaiMessage.innerHTML =
-            "Perfecto. Contame un poco más y vemos juntos cómo resolverlo.";
-
-        }
-
-        messages.appendChild(kaiMessage);
-
-    }, 500);
 }
 
 
-function showMessage(text) {
+function addMessage(text,type){
 
-    alert("Atlas: " + text);
+  const container=document.getElementById('chatMessages');
+
+  const div=document.createElement('div');
+
+  div.className='message '+type;
+
+  div.innerHTML=text;
+
+  container.appendChild(div);
+
+  div.scrollIntoView({behavior:'smooth'});
+
 }
 
-</script>
+
+function searchThing(){
+
+  const input=document.getElementById('searchInput');
+  const text=input.value.trim();
+
+  if(!text)return;
+
+  if(text.toLowerCase().includes('heladera')){
+
+    document.getElementById('searchResult').innerHTML=`
+      <div class="result">
+        <b>🧊 Encontré opciones para vos</b>
+        <p class="muted">Ejemplo de cómo Atlas podría comparar una compra.</p>
+
+        <div class="card">
+          <b>Opción 1 — Heladera No Frost</b>
+          <p>$ 899.000</p>
+          <p class="muted">12 cuotas • entrega disponible</p>
+          <button class="secondary">Ver opción</button>
+        </div>
+
+        <div class="card">
+          <b>Opción 2 — Heladera No Frost</b>
+          <p>$ 949.000</p>
+          <p class="muted">18 cuotas • descuento con tarjeta</p>
+          <button class="secondary">Ver opción</button>
+        </div>
+      </div>
+    `;
+
+  }else{
+
+    document.getElementById('searchResult').innerHTML=`
+      <div class="result">
+        <b>🔎 Atlas entendió:</b>
+        <p>${text}</p>
+        <p class="muted">En una versión conectada, Kai buscaría las mejores opciones para resolverlo.</p>
+      </div>
+    `;
+  }
+}
 
 
-<!-- INPUT DE KAI -->
+function exampleSearch(){
 
-<div id="chatInputContainer" class="chat-input hidden">
-    <input
-        id="messageInput"
-        placeholder="Escribile a Kai..."
-        onkeydown="if(event.key==='Enter') sendMessage()"
-    >
-    <button onclick="sendMessage()">➤</button>
-</div>
+  document.getElementById('searchInput').value=
+  'Se me rompió la heladera, necesito comprar una.';
 
+  searchThing();
 
-<script>
-
-document.querySelectorAll(".nav button")[1].addEventListener("click", function() {
-    document.getElementById("chatInputContainer").classList.remove("hidden");
-});
-
-document.querySelectorAll(".nav button")[0].addEventListener("click", function() {
-    document.getElementById("chatInputContainer").classList.add("hidden");
-});
-
-document.querySelectorAll(".nav button")[2].addEventListener("click", function() {
-    document.getElementById("chatInputContainer").classList.add("hidden");
-});
-
-document.querySelectorAll(".nav button")[3].addEventListener("click", function() {
-    document.getElementById("chatInputContainer").classList.add("hidden");
-});
+}
 
 </script>
 
