@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas — Vos hablá</title>
+<style>
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0f172a;color:#fff;margin:0;max-width:520px;margin:auto}
+nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:#111827;padding:8px;display:flex;justify-content:space-around;border-top:1px solid #334155;z-index:5}
+nav button{background:none;border:0;color:#94a3b8;padding:8px 6px;font-size:12px}.active{color:#60a5fa!important}
+.p{display:none;padding:20px 16px 90px}.a{display:block}.c{background:#1f2937;padding:14px;border-radius:14px;margin:10px 0;border:1px solid #334155}
+.small{color:#94a3b8;font-size:13px}.hero{background:linear-gradient(145deg,#172554,#1e293b);padding:18px;border-radius:18px;margin-bottom:14px}
+.mic{width:76px;height:76px;border-radius:50%;border:0;background:#2563eb;color:#fff;font-size:32px;display:block;margin:18px auto 10px}
+textarea{width:100%;min-height:85px;background:#111827;color:#fff;border:1px solid #475569;border-radius:12px;padding:12px;font-size:15px}
+.primary{width:100%;padding:13px;border:0;border-radius:12px;background:#2563eb;color:white;font-weight:600;margin-top:10px}
+.tag{display:inline-block;background:#334155;border-radius:999px;padding:5px 9px;font-size:12px;margin:3px}.warn{border-left:4px solid #f59e0b}.option{padding:10px;background:#111827;border-radius:10px;margin-top:7px}
+</style></head>
+<body>
+
+<section id="h" class="p a">
+<div class="hero"><h2>Buen día, Gonzalo 👋</h2><div class="small">Vos hablá. Atlas se encarga de ordenar.</div></div>
+<div class="c">🚌 Colectivo en 18 min.<br><span class="small">El siguiente pasa 12 min después. Tenés tiempo para un café.</span></div>
+<div class="c">💡 Luz vence hoy.<br><span class="small">Podés resolverlo ahora y olvidarte.</span></div>
+<div class="c">📅 <b>Próximo</b><br>11:00 — Reunión comercial</div>
+</section>
+
+<section id="k" class="p">
+<h2>Kai</h2>
+<div class="hero"><b>🎙️ Decime qué necesitás</b><div class="small">No hace falta que escribas ni que armes el evento.</div>
+<button class="mic" onclick="demoVoz()">🎙️</button><div id="vozEstado" class="small" style="text-align:center">Tocá el micrófono para probar</div></div>
+<textarea id="entrada" placeholder="También podés escribir una frase para probar..."></textarea>
+<button class="primary" onclick="ordenar()">Ordenar esto</button><div id="resultado"></div>
+</section>
+
+<section id="f" class="p"><h2>Familia</h2><div class="c">Silvia: trabajando</div><div class="c">Giulliano: clases de apoyo</div><div class="c">Uma: camino a casa</div></section>
+
+<section id="g" class="p"><h2>Agenda de Atlas</h2>
+<div class="c">📅 Lunes — 18:00<br>🏋️ Gimnasio</div><div class="c">📅 Miércoles — 15:00<br>📚 Apoyo Giulliano</div>
+<div class="c">📅 Miércoles — 18:00<br>🏋️ Gimnasio</div>
+<div class="c warn">⚠️ <b>Posible conflicto</b><br>Miércoles 18:00: gimnasio + otra actividad.
+<div class="option">Cambiar gimnasio</div><div class="option">Cambiar la otra actividad</div><div class="option">Mantener ambos</div></div>
+<div class="c">📅 Viernes — 15:00<br>📚 Apoyo Giulliano</div></section>
+
+<section id="p" class="p"><h2>Perfil</h2><div class="c">Hogar Atlas — 5 integrantes</div>
+<div class="c"><b>Principio Atlas</b><br><span class="small">La inteligencia debería ahorrarte pasos, no agregártelos.</span></div></section>
+
+<nav>
+<button id="nh" class="active" onclick="s('h','nh')">⌂<br>Home</button>
+<button id="nk" onclick="s('k','nk')">◉<br>Kai</button><button id="ng" onclick="s('g','ng')">□<br>Agenda</button>
+<button id="nf" onclick="s('f','nf')">♡<br>Familia</button><button id="np" onclick="s('p','np')">○<br>Perfil</button>
+</nav>
+
+<script>
+function s(i,n){document.querySelectorAll(".p").forEach(x=>x.className="p");document.getElementById(i).className="p a";document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));document.getElementById(n).classList.add("active")}
+function demoVoz(){document.getElementById('entrada').value='El miércoles tengo reunión con la escuela a las seis y desde la semana que viene voy al gimnasio lunes, miércoles y viernes a las 18.';document.getElementById('vozEstado').innerText='Atlas entendió tu mensaje.';ordenar()}
+function ordenar(){const t=document.getElementById('entrada').value.trim(),r=document.getElementById('resultado');if(!t){r.innerHTML='<div class="c">Decime algo y lo ordenamos.</div>';return}r.innerHTML='<div class="c"><b>🧠 Atlas entendió</b><p><span class="tag">miércoles 18:00</span><span class="tag">reunión escuela</span></p><p><span class="tag">lunes</span><span class="tag">miércoles</span><span class="tag">viernes</span><span class="tag">18:00</span><span class="tag">gimnasio</span></p><div class="c warn">⚠️ <b>Encontré una coincidencia</b><br>El miércoles a las 18:00 hay dos actividades.<div class="option">Cambiar gimnasio</div><div class="option">Cambiar reunión</div><div class="option">Mantener ambos</div></div><div class="small">Demostración del flujo. La conexión real con voz, IA y calendario viene después.</div></div>'}
+</script></body></html>
