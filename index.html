@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.4 — Vos hablá</title>
+<title>Atlas v0.4.1 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -245,7 +245,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.4</div>
+    <div class="version">Atlas v0.4.1</div>
   </div>
 
   <div class="c">
@@ -326,7 +326,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.4 — intención, conversación, lenguaje temporal y agenda inteligente.
+      Atlas v0.4.1 — intención, conversación, lenguaje temporal y agenda inteligente.
     </span>
   </div>
 </section>
@@ -635,7 +635,7 @@ function extraerFecha(textoNormalizado, hora){
 
 function clasificarIntencion(textoNormalizado){
   if(/\b(que tengo|que tarea|que hay|mostrame|mostrar|consultar|cual es|como esta mi agenda|agenda de hoy)\b/.test(textoNormalizado)) return "consultar";
-  if(/\b(mover|moverme|moveme|move|cambiar|cambia|cambiame|pasar|pasa|pasame|reprogramar|reprograma|modificar|modifica)\b/.test(textoNormalizado)) return "modificar";
+  if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:ar|ame|alo|arla|arlo|en)?|reprogram\w*|modific\w*)\b/.test(textoNormalizado)) return "modificar";
   if(/\b(eliminar|elimina|eliminame|borrar|borra|borrame|cancelar|cancela|cancelame|sacar|saca|sacame)\b/.test(textoNormalizado)) return "eliminar";
   if(/\b(agendar|agenda|agendas|agendame|agendes|guardar|guarda|anotar|anota|recordame|crea|crear|programa|programar)\b/.test(textoNormalizado)) return "crear";
   if(/\b(tengo|voy|debo|necesito|juego|rindo|llevo|paso)\b/.test(textoNormalizado)) return "informar";
@@ -1088,11 +1088,28 @@ function consultarAgenda(filtro){
 
 function prepararModificacion(pedido){
   const horas = extraerHoras(limpiarCorrecciones(normalizar(pedido.textoOriginal)));
-  const horaOrigen = horas.length > 1 ? horas[0].hora : null;
-  const horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
+  let horaOrigen = horas.length > 1 ? horas[0].hora : null;
+  let horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
   let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
   if(pedido.fecha) candidatos = candidatos.filter(x => x.fecha === pedido.fecha);
-  if(horaOrigen) candidatos = candidatos.filter(x => x.hora === horaOrigen);
+
+  if(horaOrigen){
+    const candidatosActividad = [...candidatos];
+    let coincidencias = candidatosActividad.filter(x => x.hora === horaOrigen);
+
+    if(!coincidencias.length && Number(horaOrigen.split(":")[0]) < 12){
+      const origenTarde = convertirHora(Number(horaOrigen.split(":")[0])+12,Number(horaOrigen.split(":")[1]),"");
+      coincidencias = candidatosActividad.filter(x => x.hora === origenTarde);
+      if(coincidencias.length){
+        horaOrigen = origenTarde;
+        if(horaNueva && !horas[horas.length-1]?.periodo && Number(horaNueva.split(":")[0]) < 12){
+          horaNueva = convertirHora(Number(horaNueva.split(":")[0])+12,Number(horaNueva.split(":")[1]),"");
+        }
+      }
+    }
+
+    candidatos = coincidencias;
+  }
 
   if(!candidatos.length){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré el evento que querés modificar.</b><p>Probá mencionando la actividad, el día y su horario actual.</p><div class="small">No hice ningún cambio.</div></div>`;
