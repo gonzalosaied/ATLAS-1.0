@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.4 — Vos hablá</title>
+<title>Atlas v0.5 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -245,7 +245,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.4</div>
+    <div class="version">Atlas v0.5</div>
   </div>
 
   <div class="c">
@@ -326,7 +326,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.4 — intención, conversación, lenguaje temporal y agenda inteligente.
+      Atlas v0.5 — conversación controlada, múltiples eventos, recurrencias y agenda inteligente.
     </span>
   </div>
 </section>
@@ -340,8 +340,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v04";
-const OLD_STORAGE_KEY = "atlas_agenda_v03";
+const STORAGE_KEY = "atlas_agenda_v05";
+const OLD_STORAGE_KEY = "atlas_agenda_v04";
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -373,7 +373,13 @@ function normalizar(texto){
   return texto
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"");
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\bxvii\b/g,"17")
+    .replace(/\bxviii\b/g,"18")
+    .replace(/\bxix\b/g,"19")
+    .replace(/\bxx\b/g,"20")
+    .replace(/\s+/g," ")
+    .trim();
 }
 
 function fechaLocalISO(fecha){
@@ -531,25 +537,45 @@ function convertirHora(hora,minuto,periodo){
 
 function extraerHoras(textoNormalizado){
   const resultados = [];
-  const patron = /(?:a\s+las?|desde\s+las?|hasta\s+las?|de\s+las?)\s+(\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)(?:(?:[:.]|\s+)(\d{2}))?(?:\s+y\s+(media|cuarto))?\s*(?:h|hs|horas)?(?:\s+de\s+la\s+(manana|tarde|noche|madrugada))?/g;
-  let match;
+  const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const patrones = [
+    new RegExp(`(?:a\\s+las?|desde\\s+(?:las\\s+)?|hasta\\s+(?:las\\s+)?|de\\s+(?:las\\s+)?)\\s+(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?(?:\\s+y\\s+(media|cuarto))?\\s*(?:h|hs|horas)?(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
+    new RegExp(`\\b(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s*(h|hs|horas)\\b(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
+    new RegExp(`\\b(${numero})\\s+(?:del\\s+mediodia)\\b`,"g")
+  ];
 
-  while((match = patron.exec(textoNormalizado))){
-    const h = NUMEROS[match[1]] ?? Number(match[1]);
-    const minuto = match[3] === "media" ? 30 : match[3] === "cuarto" ? 15 : Number(match[2] || 0);
-    let periodo = match[4] || "";
-
-    if(!periodo){
-      const resto = textoNormalizado.slice(match.index+match[0].length);
-      const cercano = resto.match(/^.{0,35}\bde\s+la\s+(tarde|noche|manana|madrugada)\b/);
-      if(cercano) periodo = cercano[1];
+  for(const patron of patrones){
+    let match;
+    while((match = patron.exec(textoNormalizado))){
+      const h = NUMEROS[match[1]] ?? Number(match[1]);
+      const palabraMinuto = match[3] === "media" || match[3] === "cuarto" ? match[3] : "";
+      const minuto = palabraMinuto === "media" ? 30 : palabraMinuto === "cuarto" ? 15 : Number(match[2] || 0);
+      let periodo = match[4] || "";
+      if(periodo === "mediodia") periodo = h === 12 ? "" : "tarde";
+      if(!periodo){
+        const alrededor = textoNormalizado.slice(match.index,match.index+match[0].length+45);
+        periodo = alrededor.match(/(?:de\s+la\s+)?(tarde|noche|manana|madrugada|mediodia)/)?.[1] || "";
+        if(periodo === "mediodia") periodo = h === 12 ? "" : "tarde";
+      }
+      const hora = convertirHora(h,minuto,periodo);
+      if(hora && !resultados.some(x => x.index === match.index && x.hora === hora)){
+        resultados.push({hora,index:match.index,texto:match[0],periodo});
+      }
     }
-
-    const hora = convertirHora(h,minuto,periodo);
-    if(hora) resultados.push({hora,index:match.index,texto:match[0],periodo});
   }
 
-  return resultados;
+  const pares = [...textoNormalizado.matchAll(/\b(\d{1,2})\s+(\d{2})\b/g)]
+    .filter(x => Number(x[2]) <= 59);
+  if(pares.length >= 2){
+    for(const match of pares){
+      const hora = convertirHora(Number(match[1]),Number(match[2]),"");
+      if(hora && !resultados.some(x => x.index === match.index)){
+        resultados.push({hora,index:match.index,texto:match[0],periodo:""});
+      }
+    }
+  }
+
+  return resultados.sort((a,b) => a.index-b.index).filter((x,i,lista) => !lista.slice(0,i).some(y => y.hora === x.hora && Math.abs(y.index-x.index) < 8));
 }
 
 function extraerHora(textoNormalizado){
@@ -557,7 +583,7 @@ function extraerHora(textoNormalizado){
 }
 
 function extraerDuracion(textoNormalizado){
-  const match = textoNormalizado.match(/(?:dura|durara|va\s+a\s+durar|por)\s+(\d+(?:[.,]\d+)?|una|uno|dos|tres|cuatro|cinco|seis)\s*(hora|horas|minuto|minutos)/);
+  const match = textoNormalizado.match(/(?:dura|durara|va\s+a\s+durar|durante|por|me\s+voy\s+a\s+demorar|voy\s+a\s+demorar|demoro|tarda(?:re)?)\s+(\d+(?:[.,]\d+)?|una|uno|dos|tres|cuatro|cinco|seis)\s*(hora|horas|minuto|minutos)/);
   if(!match) return null;
   const cantidad = NUMEROS[match[1]] ?? Number(match[1].replace(",","."));
   return match[2].startsWith("hora") ? cantidad*60 : cantidad;
@@ -634,8 +660,9 @@ function extraerFecha(textoNormalizado, hora){
 }
 
 function clasificarIntencion(textoNormalizado){
-  if(/\b(que tengo|que tarea|que hay|mostrame|mostrar|consultar|cual es|como esta mi agenda|agenda de hoy)\b/.test(textoNormalizado)) return "consultar";
-  if(/\b(mover|moverme|moveme|move|cambiar|cambia|cambiame|pasar|pasa|pasame|reprogramar|reprograma|modificar|modifica)\b/.test(textoNormalizado)) return "modificar";
+  if(/\b(clima|tiempo|temperatura|pronostico)\b/.test(textoNormalizado)) return "clima";
+  if(/\b(que tengo|que tarea|que hay|que dias tengo|que dia tengo|cuando tengo|mostrame|mostrar|consultar|cual es|como esta mi agenda|como esta la agenda|agenda de hoy|en mi agenda)\b/.test(textoNormalizado)) return "consultar";
+  if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:ar|ame|alo|arla|arlo|en)?|reprogram\w*|modific\w*)\b/.test(textoNormalizado)) return "modificar";
   if(/\b(eliminar|elimina|eliminame|borrar|borra|borrame|cancelar|cancela|cancelame|sacar|saca|sacame)\b/.test(textoNormalizado)) return "eliminar";
   if(/\b(agendar|agenda|agendas|agendame|agendes|guardar|guarda|anotar|anota|recordame|crea|crear|programa|programar)\b/.test(textoNormalizado)) return "crear";
   if(/\b(tengo|voy|debo|necesito|juego|rindo|llevo|paso)\b/.test(textoNormalizado)) return "informar";
@@ -671,7 +698,7 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+)/i);
+    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:el|la|los|las|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
     if(persona) titulo = `Reunión con ${persona[1]}`;
 
     return {
@@ -687,7 +714,7 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
   }
 
   if(/medico|doctora?|hospital|clinica/.test(textoNormalizado)){
-    const persona = textoOriginal.match(/llevar\s+a\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+)/i);
+    const persona = textoOriginal.match(/llevar\s+a\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,2}?)(?=\s+(?:al|a\s+la|el|la|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;]|$)/i);
     return {titulo:persona ? `Llevar a ${persona[1]} al médico` : "Turno médico",icono:"🩺",duracion:60,motivoAviso:"para que puedas salir con tiempo"};
   }
 
@@ -697,6 +724,19 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
 
   if(/supermercado|compras/.test(textoNormalizado)){
     return {titulo:"Hacer compras en el supermercado",icono:"🛒",duracion:60,motivoAviso:"para que puedas organizarte"};
+  }
+
+  if(/\b(pedido|entrega|entregar)\b/.test(textoNormalizado)){
+    return {titulo:"Entregar un pedido",icono:"📦",duracion:60,motivoAviso:"para que puedas prepararlo y llegar con tiempo"};
+  }
+
+  if(/\b(levantarme|despertarme|despertar|levantar)\b/.test(textoNormalizado)){
+    return {titulo:"Levantarse",icono:"⏰",duracion:15,motivoAviso:"para que puedas comenzar el día a tiempo"};
+  }
+
+  if(/\b(examen|parcial|prueba)\b/.test(textoNormalizado)){
+    const materia = textoOriginal.match(/(?:examen|parcial|prueba)\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ ]+?)(?=\s+(?:en|el|la|hoy|mañana|a\s+las?)\b|[.,;]|$)/i)?.[1]?.trim();
+    return {titulo:materia ? `Evaluación de ${materia}` : "Evaluación",icono:"📝",duracion:60,motivoAviso:"para que puedas prepararte con tiempo"};
   }
 
   if(textoNormalizado.includes("turno")){
@@ -731,6 +771,13 @@ function interpretar(texto){
   const actividad = datosSegunActividad(limpio,texto);
   const duracionExplicita = extraerDuracion(limpio);
 
+  let duracion = duracionExplicita || actividad.duracion;
+  if(horasDetectadas.length > 1){
+    const inicio = minutos(horasDetectadas[0].hora);
+    const fin = minutos(horasDetectadas[horasDetectadas.length-1].hora);
+    if(fin > inicio && /\b(desde|de)\b/.test(limpio)) duracion = fin-inicio;
+  }
+
   return {
     id:Date.now(),
     accion:clasificarIntencion(limpio),
@@ -739,8 +786,8 @@ function interpretar(texto){
     fecha,
     hora,
     horaAmbigua:Boolean(hora && !horasDetectadas[0]?.periodo && Number(hora.split(":")[0]) > 0 && Number(hora.split(":")[0]) < 8),
-    duracion:duracionExplicita || actividad.duracion,
-    duracionExplicita:Boolean(duracionExplicita),
+    duracion,
+    duracionExplicita:Boolean(duracionExplicita || (horasDetectadas.length > 1 && /\b(desde|de)\b/.test(limpio))),
     motivo:extraerMotivo(texto),
     avisoMinutos:60,
     motivoAviso:actividad.motivoAviso,
@@ -755,20 +802,21 @@ function diasRecurrentes(textoNormalizado){
 
 function generarRecurrencia(evento){
   const limpio = normalizar(evento.textoOriginal);
-  if(!/\b(todos|cada)\b/.test(limpio)) return [];
   const dias = diasRecurrentes(limpio);
-  if(!dias.length || !evento.hora) return [];
+  if((!(/\b(todos|cada)\b/.test(limpio)) && dias.length < 2) || !dias.length || !evento.hora) return [];
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const hasta = new Date(hoy);
-  const meses = limpio.match(/durante\s+(\d+|un|uno|dos|tres|cuatro|seis)\s+mes/);
-  const semanas = limpio.match(/durante\s+(\d+|una|uno|dos|tres|cuatro|seis)\s+semana/);
+  const meses = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|un|uno|dos|tres|cuatro|seis)\s+mes/);
+  const semanas = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|una|uno|dos|tres|cuatro|seis)\s+semana/);
   if(meses){
     const cantidad = NUMEROS[meses[1]] || (meses[1] === "un" ? 1 : Number(meses[1]));
     hasta.setMonth(hasta.getMonth()+cantidad);
   }else if(semanas){
     const cantidad = NUMEROS[semanas[1]] || Number(semanas[1]);
     hasta.setDate(hasta.getDate()+cantidad*7);
+  }else if(/hasta\s+(?:fin|final)\s+de\s+mes/.test(limpio)){
+    hasta.setMonth(hasta.getMonth()+1,0);
   }else{
     hasta.setMonth(hasta.getMonth()+1);
   }
@@ -786,20 +834,22 @@ function generarRecurrencia(evento){
 function interpretarMultiples(texto){
   const limpio = normalizar(texto);
   if(/\b(no\s+mejor|quise decir|en realidad|perdon)\b/.test(limpio)) return [];
-  const partes = texto.split(/\s*(?:,|;|\by\s+luego\b|\bdespues\b)\s*/i).filter(Boolean);
-  if(partes.length < 2 || extraerHoras(limpio).length < 2) return [];
-
+  const marcadores = [...limpio.matchAll(/\b(futbol|gimnasio|gym|reunion|dentista|odontolog\w*|supermercado|compras|medico|doctora?|mecanico|parcial|examen|prueba|asado)\b/g)];
+  if(marcadores.length < 2) return [];
   const fechaGeneral = extraerFecha(limpio,extraerHora(limpio));
   const periodo = limpio.match(/de\s+la\s+(tarde|noche|manana|madrugada)/)?.[1] || "";
-  const eventos = partes.map((parte,index) => {
-    let ampliada = parte;
+  const prefijo = texto.slice(0,marcadores[0].index);
+  const eventos = marcadores.map((marca,index) => {
+    const inicio = marca.index;
+    const fin = marcadores[index+1]?.index ?? texto.length;
+    let ampliada = `${prefijo} ${texto.slice(inicio,fin)}`.replace(/\s+y\s*$/i,"").trim();
     if(periodo && !/de\s+la\s+(tarde|noche|manana|madrugada)/i.test(ampliada)) ampliada += ` de la ${periodo}`;
     const evento = interpretar(ampliada);
     evento.accion = "crear";
     evento.fecha = evento.fecha || fechaGeneral;
     evento.id = Date.now()+index;
     return evento;
-  }).filter(x => x.hora && !/^a las?\b/i.test(x.titulo));
+  }).filter(x => x.hora);
 
   return eventos.length > 1 ? eventos : [];
 }
@@ -821,6 +871,7 @@ function buscarConflictos(evento){
   const fin = inicio+evento.duracion;
 
   return obtenerAgenda().filter(existente => {
+    if(existente.id === evento.idOriginal || existente.id === evento.excluirId) return false;
     if(existente.fecha !== evento.fecha) return false;
 
     const inicioExistente = minutos(existente.hora);
@@ -861,6 +912,26 @@ function detalleEvento(evento){
   `;
 }
 
+function mismaActividad(a,b){
+  if(!a || !b || b.icono === "📌") return true;
+  return coincideActividad(a,b);
+}
+
+function esRespuestaAlPendiente(texto,pendiente){
+  const normal = normalizar(texto);
+  if(/\b(cancelar|cancela|dejalo|deja eso|olvidalo)\b/.test(normal)) return "cancelar";
+  const complemento = interpretar(texto);
+  const cambiaActividad = complemento.icono !== "📌" && !mismaActividad(pendiente.evento,complemento);
+  if(cambiaActividad || (/\b(agendame|agenda|crear|crea|eliminar|borra|consultar|que tengo)\b/.test(normal) && complemento.icono !== "📌")){
+    return "nueva";
+  }
+  return "respuesta";
+}
+
+function botonesConversacion(){
+  return `<button class="secondary" onclick="escuchar()">🎙️ Responder ahora</button><button class="secondary" onclick="cancelar()">Cancelar esta conversación</button>`;
+}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -873,8 +944,17 @@ function ordenar(){
   }
 
   if(conversacionPendiente){
-    completarConversacion(texto);
-    return;
+    const tipoMensaje = esRespuestaAlPendiente(texto,conversacionPendiente);
+    if(tipoMensaje === "cancelar"){
+      cancelar();
+      return;
+    }
+    if(tipoMensaje === "respuesta"){
+      completarConversacion(texto);
+      return;
+    }
+    conversacionPendiente = null;
+    eventoPendiente = null;
   }
 
   eventoPendiente = null;
@@ -883,16 +963,16 @@ function ordenar(){
   if(accionGeneral === "crear" || accionGeneral === "informar"){
     const multiples = interpretarMultiples(texto);
     if(multiples.length > 1){
-      if(accionGeneral === "crear"){
-        mostrarMultiples(multiples);
-      }else{
-        eventosPendientes = multiples;
-        resultado.innerHTML = `<div class="c query"><b>Entendí ${multiples.length} actividades.</b><div style="margin-top:12px">${multiples.map(detalleEvento).join("<hr>")}</div><p>¿Querés que las agende o solamente me las estabas contando?</p><button class="primary" onclick="guardarMultiples()">Agendar todas</button><button class="secondary" onclick="cancelar()">Solo era información</button></div>`;
-      }
+      mostrarMultiples(multiples);
       return;
     }
   }
   const evento = interpretar(texto);
+
+  if(evento.accion === "clima"){
+    resultado.innerHTML = `<div class="c query"><b>🌤️ Entendí que querés consultar el clima.</b><p>Todavía no tengo conectado el servicio meteorológico de Mendoza.</p><div class="small">No creé ninguna actividad. Esta intención queda preparada para una futura integración.</div></div>`;
+    return;
+  }
 
   if(evento.accion === "consultar"){
     consultarAgenda(evento);
@@ -934,6 +1014,7 @@ function procesarCreacion(evento){
         <b>¿Cuándo sería?</b>
         <p>Ya entendí: ${escapar(evento.titulo)}.</p>
         <div class="small">Respondeme con el día y la hora; voy a continuar este mismo evento.</div>
+        ${botonesConversacion()}
       </div>
     `;
     return;
@@ -945,6 +1026,7 @@ function procesarCreacion(evento){
       <div class="c info">
         <b>¿Qué día querés hacer esto?</b>
         <p>Ya entendí que sería a las ${evento.hora}.</p>
+        ${botonesConversacion()}
       </div>
     `;
     return;
@@ -956,6 +1038,7 @@ function procesarCreacion(evento){
       <div class="c info">
         <b>¿A qué hora sería?</b>
         <p>Ya entendí que es el ${fechaBonita(evento.fecha)}.</p>
+        ${botonesConversacion()}
       </div>
     `;
     return;
@@ -963,7 +1046,7 @@ function procesarCreacion(evento){
 
   if(evento.horaAmbigua){
     conversacionPendiente = {tipo:"periodo",evento};
-    resultado.innerHTML = `<div class="c info"><b>Quiero confirmar el horario.</b><p>¿${evento.hora} de la mañana o de la tarde?</p><div class="small">Ya conservé el resto del evento; respondeme solamente “de la mañana” o “de la tarde”.</div></div>`;
+    resultado.innerHTML = `<div class="c info"><b>Quiero confirmar el horario.</b><p>¿${evento.hora} de la mañana o de la tarde?</p><div class="small">Ya conservé el resto del evento; respondeme solamente “de la mañana” o “de la tarde”.</div>${botonesConversacion()}</div>`;
     return;
   }
 
@@ -994,7 +1077,24 @@ function mostrarMultiples(eventos){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Detecté varias actividades, pero falta información.</b><p>${eventos.map((x,i) => `${i+1}. ${escapar(x.titulo)} — ${x.fecha ? fechaBonita(x.fecha) : "día pendiente"} · ${x.hora || "hora pendiente"}`).join("<br>")}</p><div class="small">No guardé nada. Decímelas nuevamente aclarando los datos que faltan.</div></div>`;
     return;
   }
-  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventos.length} eventos</b><div style="margin-top:12px">${eventos.map(detalleEvento).join("<hr>")}</div></div><div class="c success"><b>Voy a tratarlos individualmente.</b><p>¿Querés guardar todos?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar los ${eventos.length}</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+  const cruces = conflictosInternos(eventos);
+  const externos = eventos.flatMap(evento => buscarConflictos(evento).map(existente => [evento,existente]));
+  const resumenCruces = cruces.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> (${a.hora}–${aHora(minutos(a.hora)+a.duracion)}) se superpone con <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const resumenExternos = externos.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> se superpone con un evento ya guardado: <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const totalCruces = cruces.length+externos.length;
+  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventos.length} eventos</b><div style="margin-top:12px">${eventos.map(detalleEvento).join("<hr>")}</div></div>${totalCruces ? `<div class="c warn"><b>⚠️ Encontré ${totalCruces} ${totalCruces === 1 ? "superposición" : "superposiciones"}.</b>${resumenCruces}${resumenExternos}<div class="small">No guardé nada todavía.</div></div>` : `<div class="c success"><b>No encontré conflictos entre las actividades ni con tu agenda.</b></div>`}<div class="c info"><p>¿Querés guardar igualmente los ${eventos.length} eventos?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar todos</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+}
+
+function conflictosInternos(eventos){
+  const cruces = [];
+  for(let i=0;i<eventos.length;i++){
+    for(let j=i+1;j<eventos.length;j++){
+      const a = eventos[i], b = eventos[j];
+      if(a.fecha !== b.fecha) continue;
+      if(minutos(a.hora) < minutos(b.hora)+b.duracion && minutos(a.hora)+a.duracion > minutos(b.hora)) cruces.push([a,b]);
+    }
+  }
+  return cruces;
 }
 
 function mostrarRecurrencia(serie){
@@ -1076,6 +1176,7 @@ function consultarAgenda(filtro){
   let agenda = obtenerAgenda();
   if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
   if(filtro.hora) agenda = agenda.filter(x => x.hora === filtro.hora);
+  if(filtro.icono !== "📌") agenda = agenda.filter(x => coincideActividad(x,filtro));
   const resultado = document.getElementById("resultado");
 
   if(!agenda.length){
@@ -1086,16 +1187,53 @@ function consultarAgenda(filtro){
   resultado.innerHTML = `<div class="c query"><b>📅 Esto figura en tu agenda</b><div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
+function fechasMencionadas(texto,hora){
+  const normal = normalizar(texto);
+  const dias = [...normal.matchAll(/\b(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/g)];
+  const fechas = dias.map(x => ({nombre:x[1],index:x.index,fecha:extraerFecha(x[1],hora)}));
+  for(let i=1;i<fechas.length;i++){
+    let actual = fechaDesdeISO(fechas[i].fecha);
+    const anterior = fechaDesdeISO(fechas[i-1].fecha);
+    while(actual <= anterior) actual = sumarDias(actual,7);
+    fechas[i].fecha = fechaLocalISO(actual);
+  }
+  return fechas;
+}
+
 function prepararModificacion(pedido){
   const horas = extraerHoras(limpiarCorrecciones(normalizar(pedido.textoOriginal)));
-  const horaOrigen = horas.length > 1 ? horas[0].hora : null;
-  const horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
+  const fechas = fechasMencionadas(pedido.textoOriginal,horas[0]?.hora);
+  let horaOrigen = horas.length > 1 ? horas[0].hora : null;
+  let horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
+  const fechaOrigen = fechas[0]?.fecha || pedido.fecha;
+  const fechaNueva = fechas.length > 1 ? fechas[fechas.length-1].fecha : null;
   let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
-  if(pedido.fecha) candidatos = candidatos.filter(x => x.fecha === pedido.fecha);
-  if(horaOrigen) candidatos = candidatos.filter(x => x.hora === horaOrigen);
+  if(fechaOrigen) candidatos = candidatos.filter(x => x.fecha === fechaOrigen);
+
+  if(horaOrigen){
+    const candidatosActividad = [...candidatos];
+    let coincidencias = candidatosActividad.filter(x => x.hora === horaOrigen);
+
+    if(!coincidencias.length && Number(horaOrigen.split(":")[0]) < 12){
+      const origenTarde = convertirHora(Number(horaOrigen.split(":")[0])+12,Number(horaOrigen.split(":")[1]),"");
+      coincidencias = candidatosActividad.filter(x => x.hora === origenTarde);
+      if(coincidencias.length){
+        horaOrigen = origenTarde;
+        if(horaNueva && !horas[horas.length-1]?.periodo && Number(horaNueva.split(":")[0]) < 12){
+          horaNueva = convertirHora(Number(horaNueva.split(":")[0])+12,Number(horaNueva.split(":")[1]),"");
+        }
+      }
+    }
+
+    candidatos = coincidencias;
+  }
 
   if(!candidatos.length){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré el evento que querés modificar.</b><p>Probá mencionando la actividad, el día y su horario actual.</p><div class="small">No hice ningún cambio.</div></div>`;
+    return;
+  }
+  if(candidatos.length > 1 && !horaOrigen){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento parecido.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime también su horario actual para elegir el correcto.</p><div class="small">No hice ningún cambio.</div></div>`;
     return;
   }
   if(!horaNueva || (horas.length < 2 && horaNueva === candidatos[0].hora)){
@@ -1105,12 +1243,14 @@ function prepararModificacion(pedido){
   }
 
   const original = candidatos[0];
-  eventoPendiente = {...original,hora:horaNueva,id:original.id,accion:"modificar",idOriginal:original.id};
+  eventoPendiente = {...original,fecha:fechaNueva || original.fecha,hora:horaNueva,id:original.id,accion:"modificar",idOriginal:original.id};
   mostrarConfirmacionModificacion(original);
 }
 
 function mostrarConfirmacionModificacion(original){
-  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Entendí que querés modificar esto</b><p><b>Antes:</b></p>${detalleEvento(original)}<hr><p><b>Después:</b></p>${detalleEvento(eventoPendiente)}<button class="primary" onclick="confirmarModificacion()">Sí, modificar</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+  const conflictos = buscarConflictos(eventoPendiente);
+  const aviso = conflictos.length ? `<div class="c warn"><b>⚠️ Este cambio genera un conflicto.</b><p><b>Se superpone con:</b></p>${conflictos.map(detalleEvento).join("<hr>")}<div class="small">Todavía no modifiqué nada.</div></div>` : `<div class="c success"><b>No encontré conflictos para el nuevo horario.</b></div>`;
+  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Entendí que querés modificar esto</b><p><b>Antes:</b></p>${detalleEvento(original)}<hr><p><b>Después:</b></p>${detalleEvento(eventoPendiente)}</div>${aviso}<div class="c info"><button class="primary" onclick="confirmarModificacion()">${conflictos.length ? "Modificar igualmente" : "Sí, modificar"}</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
 }
 
 function confirmarModificacion(){
@@ -1131,6 +1271,10 @@ function prepararEliminacion(pedido){
   if(pedido.hora) candidatos = candidatos.filter(x => x.hora === pedido.hora);
   if(!candidatos.length){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré ese evento.</b><div class="small">No eliminé nada.</div></div>`;
+    return;
+  }
+  if(candidatos.length > 1){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento que coincide.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime el día o el horario para identificar cuál querés eliminar.</p><div class="small">No eliminé nada.</div></div>`;
     return;
   }
   eventoPendiente = {...candidatos[0],accion:"eliminar"};
