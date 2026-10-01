@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.6 — Vos hablá</title>
+<title>Atlas v0.7 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -231,6 +231,20 @@ hr{
   border-top:1px solid #334155;
   margin:14px 0;
 }
+
+.agenda-tabs,.agenda-nav{display:flex;gap:8px;align-items:center;margin:14px 0}
+.agenda-tabs button,.agenda-nav button{flex:1;padding:10px 8px;border:1px solid #334155;border-radius:10px;background:#1f2937;color:#cbd5e1;font-weight:700}
+.agenda-tabs button.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
+.agenda-nav .periodo{flex:2;text-align:center;font-weight:700;font-size:14px}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:12px 0 16px}
+.day-chip{min-width:0;padding:9px 2px;border:1px solid #334155;border-radius:12px;background:#111827;color:#cbd5e1;text-align:center}
+.day-chip.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
+.day-chip .dow{font-size:10px;text-transform:uppercase}.day-chip .num{font-size:18px;font-weight:800;margin:3px 0}.day-chip .dot{height:5px;font-size:11px;color:#60a5fa}
+.day-chip.selected .dot{color:#fff}
+.agenda-heading{margin:18px 0 6px;font-size:16px}
+.past-events summary{cursor:pointer;color:#94a3b8;padding:12px 2px}
+.mic-help{display:none;margin-top:10px;padding:10px;border-radius:10px;background:#111827;border:1px solid #475569;text-align:left}
+.mic-help.show{display:block}
 </style>
 </head>
 
@@ -245,7 +259,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.6</div>
+    <div class="version">Atlas v0.7</div>
   </div>
 
   <div class="c">
@@ -278,6 +292,7 @@ hr{
     <div id="vozEstado" class="small" style="text-align:center">
       Tocá el micrófono para hablar
     </div>
+    <div id="micHelp" class="small mic-help"></div>
   </div>
 
   <textarea
@@ -304,6 +319,12 @@ hr{
     Esta agenda vive únicamente en este navegador durante la prueba.
   </div>
 
+  <div class="agenda-tabs">
+    <button id="vistaDia" onclick="cambiarVistaAgenda('dia')">Día</button>
+    <button id="vistaSemana" class="selected" onclick="cambiarVistaAgenda('semana')">Semana</button>
+    <button id="vistaLista" onclick="cambiarVistaAgenda('lista')">Lista</button>
+  </div>
+  <div id="agendaControles"></div>
   <div id="agendaLista"></div>
 
   <button class="secondary danger" onclick="reiniciarPrueba()">
@@ -326,7 +347,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.6 — núcleo reforzado para interpretar, validar y confirmar antes de actuar.
+      Atlas v0.7 — interpretación reforzada y agenda por día, semana o lista.
     </span>
   </div>
 </section>
@@ -340,13 +361,15 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v06";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v07";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
 let reconocimiento = null;
 let escuchando = false;
+let vistaAgenda = "semana";
+let fechaAgenda = fechaLocalISO(new Date());
 
 function s(id, navId){
   document.querySelectorAll(".p").forEach(x => x.classList.remove("a"));
@@ -455,6 +478,9 @@ function escuchar(){
 
   const estado = document.getElementById("vozEstado");
   const boton = document.getElementById("micButton");
+  const ayuda = document.getElementById("micHelp");
+  ayuda.classList.remove("show");
+  ayuda.innerHTML = "";
 
   if(!SpeechRecognition){
     estado.innerText =
@@ -488,7 +514,9 @@ function escuchar(){
   reconocimiento.onerror = evento => {
     if(evento.error === "not-allowed"){
       estado.innerText =
-        "Necesito permiso para usar el micrófono. Revisá el permiso del navegador.";
+        "El navegador bloqueó el micrófono.";
+      ayuda.innerHTML = `Abrí el menú del navegador o el candado junto a la dirección, permití <b>Micrófono</b>, recargá la página y probá otra vez.<button class="secondary" onclick="escuchar()">Volver a intentar</button>`;
+      ayuda.classList.add("show");
     }else if(evento.error === "no-speech"){
       estado.innerText = "No llegué a escucharte. Probemos otra vez.";
     }else{
@@ -540,6 +568,14 @@ function convertirHora(hora,minuto,periodo){
 function extraerHoras(textoNormalizado){
   const resultados = [];
   const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const rango = new RegExp(`\\b(?:de|desde)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s+(?:a|hasta)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\b`,"g");
+  let rangoMatch;
+  while((rangoMatch = rango.exec(textoNormalizado))){
+    const inicio = convertirHora(NUMEROS[rangoMatch[1]] ?? Number(rangoMatch[1]),Number(rangoMatch[2] || 0),"");
+    const fin = convertirHora(NUMEROS[rangoMatch[3]] ?? Number(rangoMatch[3]),Number(rangoMatch[4] || 0),"");
+    if(inicio) resultados.push({hora:inicio,index:rangoMatch.index,texto:rangoMatch[0],periodo:""});
+    if(fin) resultados.push({hora:fin,index:rangoMatch.index+rangoMatch[0].lastIndexOf(rangoMatch[3]),texto:rangoMatch[3],periodo:""});
+  }
   const patrones = [
     new RegExp(`(?:a\\s+las?|desde\\s+(?:las\\s+)?|hasta\\s+(?:las\\s+)?|de\\s+(?:las\\s+)?)\\s+(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?(?:\\s+y\\s+(media|cuarto))?\\s*(?:h|hs|horas)?(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
     new RegExp(`\\b(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s*(h|hs|horas)\\b(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
@@ -700,7 +736,7 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:el|la|los|las|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
+    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
     if(persona) titulo = `Reunión con ${persona[1]}`;
 
     return {
@@ -818,7 +854,8 @@ function generarRecurrencia(evento){
     hasta.setMonth(hasta.getMonth()+cantidad);
   }else if(semanas){
     const cantidad = NUMEROS[semanas[1]] || Number(semanas[1]);
-    hasta.setDate(hasta.getDate()+cantidad*7);
+    // "Durante dos semanas" incluye exactamente catorce días contando el inicial.
+    hasta.setDate(hasta.getDate()+cantidad*7-1);
   }else if(/hasta\s+(?:fin|final)\s+de\s+mes/.test(limpio)){
     hasta.setMonth(hasta.getMonth()+1,0);
   }else{
@@ -1503,6 +1540,62 @@ function probarAviso(id){
   if(evento) mostrarAviso(evento);
 }
 
+function inicioSemana(fecha){
+  const base = fechaDesdeISO(fecha);
+  const diferencia = (base.getDay()+6)%7;
+  return sumarDias(base,-diferencia);
+}
+
+function cambiarVistaAgenda(vista){
+  vistaAgenda = vista;
+  document.querySelectorAll(".agenda-tabs button").forEach(x => x.classList.remove("selected"));
+  document.getElementById(`vista${vista.charAt(0).toUpperCase()+vista.slice(1)}`).classList.add("selected");
+  renderAgenda();
+}
+
+function seleccionarDiaAgenda(fecha){
+  fechaAgenda = fecha;
+  renderAgenda();
+}
+
+function moverAgenda(direccion){
+  const salto = vistaAgenda === "semana" ? 7 : 1;
+  fechaAgenda = fechaLocalISO(sumarDias(fechaDesdeISO(fechaAgenda),direccion*salto));
+  renderAgenda();
+}
+
+function irHoyAgenda(){
+  fechaAgenda = fechaLocalISO(new Date());
+  renderAgenda();
+}
+
+function tarjetaAgenda(evento){
+  return `<div class="c">${detalleEvento(evento)}<button class="secondary" onclick="probarAviso(${evento.id})">Probar aviso</button></div>`;
+}
+
+function controlesAgenda(agenda){
+  const controles = document.getElementById("agendaControles");
+  if(vistaAgenda === "lista"){
+    controles.innerHTML = "";
+    return;
+  }
+  const seleccionada = fechaDesdeISO(fechaAgenda);
+  const referencia = vistaAgenda === "semana" ? inicioSemana(fechaAgenda) : seleccionada;
+  const titulo = vistaAgenda === "semana"
+    ? `${referencia.toLocaleDateString("es-AR",{day:"numeric",month:"short"})} – ${sumarDias(referencia,6).toLocaleDateString("es-AR",{day:"numeric",month:"short"})}`
+    : mayuscula(seleccionada.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"}));
+  let tira = "";
+  if(vistaAgenda === "semana"){
+    tira = `<div class="week-strip">${Array.from({length:7},(_,i) => {
+      const dia = sumarDias(referencia,i);
+      const iso = fechaLocalISO(dia);
+      const cantidad = agenda.filter(x => x.fecha === iso).length;
+      return `<button class="day-chip ${iso === fechaAgenda ? "selected" : ""}" onclick="seleccionarDiaAgenda('${iso}')"><div class="dow">${dia.toLocaleDateString("es-AR",{weekday:"short"}).replace(".","")}</div><div class="num">${dia.getDate()}</div><div class="dot">${cantidad ? `● ${cantidad}` : ""}</div></button>`;
+    }).join("")}</div>`;
+  }
+  controles.innerHTML = `<div class="agenda-nav"><button onclick="moverAgenda(-1)">‹</button><button onclick="irHoyAgenda()">Hoy</button><div class="periodo">${titulo}</div><button onclick="moverAgenda(1)">›</button></div>${tira}`;
+}
+
 function revisarAvisos(){
   const ahora = new Date();
 
@@ -1533,7 +1626,8 @@ function revisarAvisos(){
 
 function renderAgenda(){
   const contenedor = document.getElementById("agendaLista");
-  const agenda = obtenerAgenda();
+  const agenda = obtenerAgenda().sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  controlesAgenda(agenda);
 
   if(agenda.length === 0){
     contenedor.innerHTML = `
@@ -1545,14 +1639,16 @@ function renderAgenda(){
     return;
   }
 
-  contenedor.innerHTML = agenda.map(evento => `
-    <div class="c">
-      ${detalleEvento(evento)}
-      <button class="secondary" onclick="probarAviso(${evento.id})">
-        Probar aviso
-      </button>
-    </div>
-  `).join("");
+  if(vistaAgenda === "lista"){
+    const hoy = fechaLocalISO(new Date());
+    const proximos = agenda.filter(x => x.fecha >= hoy);
+    const anteriores = agenda.filter(x => x.fecha < hoy);
+    contenedor.innerHTML = `${proximos.length ? proximos.map(tarjetaAgenda).join("") : '<div class="empty">No hay eventos próximos.</div>'}${anteriores.length ? `<details class="past-events"><summary>Ver ${anteriores.length} eventos anteriores</summary>${anteriores.map(tarjetaAgenda).join("")}</details>` : ""}`;
+    return;
+  }
+
+  const delDia = agenda.filter(x => x.fecha === fechaAgenda);
+  contenedor.innerHTML = `<h3 class="agenda-heading">${mayuscula(fechaBonita(fechaAgenda))} · ${delDia.length} ${delDia.length === 1 ? "evento" : "eventos"}</h3>${delDia.length ? delDia.map(tarjetaAgenda).join("") : '<div class="empty">Este día está libre.</div>'}`;
 }
 
 function actualizarProximo(){
