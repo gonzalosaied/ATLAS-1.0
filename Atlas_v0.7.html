@@ -1,0 +1,1713 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas v0.7 — Vos hablá</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  background:#0f172a;
+  color:#fff;
+  margin:0 auto;
+  max-width:520px;
+}
+
+nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  max-width:520px;
+  margin:auto;
+  background:#111827;
+  padding:8px;
+  display:flex;
+  justify-content:space-around;
+  border-top:1px solid #334155;
+  z-index:10;
+}
+
+nav button{
+  background:none;
+  border:0;
+  color:#94a3b8;
+  padding:8px 6px;
+  font-size:12px;
+}
+
+.active{color:#60a5fa!important}
+
+.p{
+  display:none;
+  padding:20px 16px 100px;
+}
+
+.a{display:block}
+
+.c{
+  background:#1f2937;
+  padding:14px;
+  border-radius:14px;
+  margin:10px 0;
+  border:1px solid #334155;
+}
+
+.small{
+  color:#94a3b8;
+  font-size:13px;
+  line-height:1.45;
+}
+
+.hero{
+  background:linear-gradient(145deg,#172554,#1e293b);
+  padding:18px;
+  border-radius:18px;
+  margin-bottom:14px;
+}
+
+.mic{
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  border:0;
+  background:#2563eb;
+  color:#fff;
+  font-size:32px;
+  display:block;
+  margin:18px auto 10px;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.mic.listening{
+  background:#dc2626;
+  transform:scale(1.08);
+  box-shadow:0 0 0 12px #dc262633;
+}
+
+textarea{
+  width:100%;
+  min-height:85px;
+  background:#111827;
+  color:#fff;
+  border:1px solid #475569;
+  border-radius:12px;
+  padding:12px;
+  font-size:15px;
+  resize:vertical;
+}
+
+button{cursor:pointer}
+
+.primary{
+  width:100%;
+  padding:13px;
+  border:0;
+  border-radius:12px;
+  background:#2563eb;
+  color:white;
+  font-weight:600;
+  margin-top:10px;
+}
+
+.secondary{
+  width:100%;
+  padding:12px;
+  border:1px solid #475569;
+  border-radius:12px;
+  background:#334155;
+  color:white;
+  font-weight:600;
+  margin-top:8px;
+}
+
+.danger{
+  background:#3f1d24;
+  border-color:#7f1d1d;
+}
+
+.tag{
+  display:inline-block;
+  background:#334155;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:12px;
+  margin:3px;
+}
+
+.warn{border-left:4px solid #f59e0b}
+.success{border-left:4px solid #22c55e}
+.info{border-left:4px solid #3b82f6}
+.query{border-left:4px solid #a78bfa}
+
+.version{
+  display:inline-block;
+  margin-top:10px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#2563eb33;
+  color:#93c5fd;
+  font-size:12px;
+  font-weight:700;
+}
+
+.option{
+  width:100%;
+  text-align:left;
+  padding:12px;
+  background:#111827;
+  color:white;
+  border:1px solid #334155;
+  border-radius:10px;
+  margin-top:8px;
+}
+
+.option:hover{border-color:#60a5fa}
+
+.event-row{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.event-icon{
+  font-size:25px;
+  width:34px;
+  text-align:center;
+}
+
+.event-data{flex:1}
+
+.event-title{
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.empty{
+  text-align:center;
+  padding:25px 12px;
+  color:#94a3b8;
+}
+
+.notice{
+  position:fixed;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%) translateY(-140%);
+  width:calc(100% - 32px);
+  max-width:488px;
+  background:#f8fafc;
+  color:#0f172a;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 15px 40px #0008;
+  z-index:50;
+  transition:.3s;
+}
+
+.notice.show{
+  transform:translateX(-50%) translateY(0);
+}
+
+.notice-title{
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+
+.actions button{flex:1}
+
+hr{
+  border:0;
+  border-top:1px solid #334155;
+  margin:14px 0;
+}
+
+.agenda-tabs,.agenda-nav{display:flex;gap:8px;align-items:center;margin:14px 0}
+.agenda-tabs button,.agenda-nav button{flex:1;padding:10px 8px;border:1px solid #334155;border-radius:10px;background:#1f2937;color:#cbd5e1;font-weight:700}
+.agenda-tabs button.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
+.agenda-nav .periodo{flex:2;text-align:center;font-weight:700;font-size:14px}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:12px 0 16px}
+.day-chip{min-width:0;padding:9px 2px;border:1px solid #334155;border-radius:12px;background:#111827;color:#cbd5e1;text-align:center}
+.day-chip.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
+.day-chip .dow{font-size:10px;text-transform:uppercase}.day-chip .num{font-size:18px;font-weight:800;margin:3px 0}.day-chip .dot{height:5px;font-size:11px;color:#60a5fa}
+.day-chip.selected .dot{color:#fff}
+.agenda-heading{margin:18px 0 6px;font-size:16px}
+.past-events summary{cursor:pointer;color:#94a3b8;padding:12px 2px}
+.mic-help{display:none;margin-top:10px;padding:10px;border-radius:10px;background:#111827;border:1px solid #475569;text-align:left}
+.mic-help.show{display:block}
+</style>
+</head>
+
+<body>
+
+<div id="notice" class="notice">
+  <div class="notice-title" id="noticeTitle"></div>
+  <div id="noticeText"></div>
+</div>
+
+<section id="h" class="p a">
+  <div class="hero">
+    <h2>Buen día, Gonzalo 👋</h2>
+    <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
+    <div class="version">Atlas v0.7</div>
+  </div>
+
+  <div class="c">
+    🚌 Colectivo en 18 min.<br>
+    <span class="small">El siguiente pasa 12 min después. Tenés tiempo para un café.</span>
+  </div>
+
+  <div class="c">
+    💡 Luz vence hoy.<br>
+    <span class="small">Podés resolverlo ahora y olvidarte.</span>
+  </div>
+
+  <div class="c" id="proximoEvento">
+    📅 <b>Próximo</b><br>
+    <span class="small">Todavía no hay eventos guardados.</span>
+  </div>
+</section>
+
+<section id="k" class="p">
+  <h2>Kai</h2>
+
+  <div class="hero">
+    <b>🎙️ Decime qué necesitás</b>
+    <div class="small">
+      Podés crear, consultar, modificar o eliminar actividades hablando naturalmente.
+    </div>
+
+    <button id="micButton" class="mic" onclick="escuchar()">🎙️</button>
+
+    <div id="vozEstado" class="small" style="text-align:center">
+      Tocá el micrófono para hablar
+    </div>
+    <div id="micHelp" class="small mic-help"></div>
+  </div>
+
+  <textarea
+    id="entrada"
+    placeholder="También podés escribir la frase para probar..."
+  ></textarea>
+
+  <button class="primary" onclick="ordenar()">Ordenar esto</button>
+
+  <div id="resultado"></div>
+</section>
+
+<section id="f" class="p">
+  <h2>Familia</h2>
+  <div class="c">Silvia: trabajando</div>
+  <div class="c">Giulliano: clases de apoyo</div>
+  <div class="c">Uma: camino a casa</div>
+</section>
+
+<section id="g" class="p">
+  <h2>Agenda de Atlas</h2>
+
+  <div class="small">
+    Esta agenda vive únicamente en este navegador durante la prueba.
+  </div>
+
+  <div class="agenda-tabs">
+    <button id="vistaDia" onclick="cambiarVistaAgenda('dia')">Día</button>
+    <button id="vistaSemana" class="selected" onclick="cambiarVistaAgenda('semana')">Semana</button>
+    <button id="vistaLista" onclick="cambiarVistaAgenda('lista')">Lista</button>
+  </div>
+  <div id="agendaControles"></div>
+  <div id="agendaLista"></div>
+
+  <button class="secondary danger" onclick="reiniciarPrueba()">
+    Reiniciar agenda de prueba
+  </button>
+</section>
+
+<section id="p" class="p">
+  <h2>Perfil</h2>
+
+  <div class="c">Hogar Atlas — 5 integrantes</div>
+
+  <div class="c">
+    <b>Principio Atlas</b><br>
+    <span class="small">
+      La inteligencia debería ahorrarte pasos, no agregártelos.
+    </span>
+  </div>
+
+  <div class="c">
+    <b>Versión de prueba</b><br>
+    <span class="small">
+      Atlas v0.7 — interpretación reforzada y agenda por día, semana o lista.
+    </span>
+  </div>
+</section>
+
+<nav>
+  <button id="nh" class="active" onclick="s('h','nh')">⌂<br>Home</button>
+  <button id="nk" onclick="s('k','nk')">◉<br>Kai</button>
+  <button id="ng" onclick="s('g','ng')">□<br>Agenda</button>
+  <button id="nf" onclick="s('f','nf')">♡<br>Familia</button>
+  <button id="np" onclick="s('p','np')">○<br>Perfil</button>
+</nav>
+
+<script>
+const STORAGE_KEY = "atlas_agenda_v07";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+let eventoPendiente = null;
+let conversacionPendiente = null;
+let eventosPendientes = [];
+let reconocimiento = null;
+let escuchando = false;
+let vistaAgenda = "semana";
+let fechaAgenda = fechaLocalISO(new Date());
+
+function s(id, navId){
+  document.querySelectorAll(".p").forEach(x => x.classList.remove("a"));
+  document.getElementById(id).classList.add("a");
+
+  document.querySelectorAll("nav button").forEach(x => {
+    x.classList.remove("active");
+  });
+
+  document.getElementById(navId).classList.add("active");
+
+  if(id === "g") renderAgenda();
+}
+
+function escapar(texto){
+  return String(texto)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+}
+
+function normalizar(texto){
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\bxvii\b/g,"17")
+    .replace(/\bxviii\b/g,"18")
+    .replace(/\bxix\b/g,"19")
+    .replace(/\bxx\b/g,"20")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function fechaLocalISO(fecha){
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth()+1).padStart(2,"0");
+  const d = String(fecha.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+
+function fechaDesdeISO(iso){
+  const [y,m,d] = iso.split("-").map(Number);
+  return new Date(y,m-1,d);
+}
+
+function sumarDias(fecha, cantidad){
+  const nueva = new Date(fecha);
+  nueva.setDate(nueva.getDate()+cantidad);
+  return nueva;
+}
+
+function obtenerAgenda(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  }catch{
+    return [];
+  }
+}
+
+function guardarAgenda(agenda){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(agenda));
+}
+
+function proximoDiaSemana(indice){
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  let diferencia = (indice-hoy.getDay()+7)%7;
+  if(diferencia === 0) diferencia = 7;
+
+  return sumarDias(hoy,diferencia);
+}
+
+function inicializarAgenda(){
+  if(localStorage.getItem(STORAGE_KEY) !== null) return;
+
+  for(const claveAnterior of OLD_STORAGE_KEYS){
+    const agendaAnterior = localStorage.getItem(claveAnterior);
+    if(agendaAnterior){
+      localStorage.setItem(STORAGE_KEY,agendaAnterior);
+      return;
+    }
+  }
+
+  const miercoles = proximoDiaSemana(3);
+
+  guardarAgenda([
+    {
+      id:Date.now(),
+      titulo:"Gimnasio",
+      icono:"🏋️",
+      fecha:fechaLocalISO(miercoles),
+      hora:"18:00",
+      duracion:60,
+      avisoMinutos:60,
+      motivoAviso:"para que puedas organizarte y llegar con tiempo"
+    }
+  ]);
+}
+
+function escuchar(){
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const estado = document.getElementById("vozEstado");
+  const boton = document.getElementById("micButton");
+  const ayuda = document.getElementById("micHelp");
+  ayuda.classList.remove("show");
+  ayuda.innerHTML = "";
+
+  if(!SpeechRecognition){
+    estado.innerText =
+      "Este navegador no admite reconocimiento de voz. Podés escribir la frase debajo.";
+    return;
+  }
+
+  if(escuchando && reconocimiento){
+    reconocimiento.stop();
+    return;
+  }
+
+  reconocimiento = new SpeechRecognition();
+  reconocimiento.lang = "es-AR";
+  reconocimiento.interimResults = false;
+  reconocimiento.continuous = false;
+
+  reconocimiento.onstart = () => {
+    escuchando = true;
+    boton.classList.add("listening");
+    estado.innerText = "Te escucho…";
+  };
+
+  reconocimiento.onresult = evento => {
+    const texto = evento.results[0][0].transcript;
+    document.getElementById("entrada").value = texto;
+    estado.innerText = `Escuché: “${texto}”`;
+    ordenar();
+  };
+
+  reconocimiento.onerror = evento => {
+    if(evento.error === "not-allowed"){
+      estado.innerText =
+        "El navegador bloqueó el micrófono.";
+      ayuda.innerHTML = `Abrí el menú del navegador o el candado junto a la dirección, permití <b>Micrófono</b>, recargá la página y probá otra vez.<button class="secondary" onclick="escuchar()">Volver a intentar</button>`;
+      ayuda.classList.add("show");
+    }else if(evento.error === "no-speech"){
+      estado.innerText = "No llegué a escucharte. Probemos otra vez.";
+    }else{
+      estado.innerText =
+        "No pude usar el micrófono. También podés escribir la frase.";
+    }
+  };
+
+  reconocimiento.onend = () => {
+    escuchando = false;
+    boton.classList.remove("listening");
+  };
+
+  reconocimiento.start();
+}
+
+const NUMEROS = {
+  una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,
+  nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,
+  dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,
+  veintiuna:21,veintiuno:21,veintidos:22,veintitres:23
+};
+
+function limpiarCorrecciones(texto){
+  const marcas = /(?:\bno,?\s+mejor\b|\bmejor\b|\ben realidad\b|\bquise decir\b|\bperdon,?\s*(?:quise decir)?\b)/g;
+  const coincidencias = [...texto.matchAll(marcas)];
+  if(!coincidencias.length) return texto;
+
+  const ultima = coincidencias[coincidencias.length-1];
+  const antes = texto.slice(0,ultima.index);
+  const despues = texto.slice(ultima.index+ultima[0].length);
+  const contexto = antes
+    .replace(/\b(?:a\s+las?|desde\s+las?)\s+\d{1,2}(?::\d{2}|\s+\d{2})?/g,"")
+    .replace(/\b(?:a\s+las?)\s+\w+(?:\s+y\s+media)?/g,"");
+  return `${contexto} ${despues}`.trim();
+}
+
+function convertirHora(hora,minuto,periodo){
+  let h = Number(hora);
+  const m = Number(minuto || 0);
+  if(h < 0 || h > 23 || m < 0 || m > 59) return null;
+
+  if(periodo && /(tarde|noche)/.test(periodo) && h < 12) h += 12;
+  if(periodo && /madrugada/.test(periodo) && h === 12) h = 0;
+  if(periodo && /manana/.test(periodo) && h === 12) h = 0;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+
+function extraerHoras(textoNormalizado){
+  const resultados = [];
+  const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const rango = new RegExp(`\\b(?:de|desde)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s+(?:a|hasta)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\b`,"g");
+  let rangoMatch;
+  while((rangoMatch = rango.exec(textoNormalizado))){
+    const inicio = convertirHora(NUMEROS[rangoMatch[1]] ?? Number(rangoMatch[1]),Number(rangoMatch[2] || 0),"");
+    const fin = convertirHora(NUMEROS[rangoMatch[3]] ?? Number(rangoMatch[3]),Number(rangoMatch[4] || 0),"");
+    if(inicio) resultados.push({hora:inicio,index:rangoMatch.index,texto:rangoMatch[0],periodo:""});
+    if(fin) resultados.push({hora:fin,index:rangoMatch.index+rangoMatch[0].lastIndexOf(rangoMatch[3]),texto:rangoMatch[3],periodo:""});
+  }
+  const patrones = [
+    new RegExp(`(?:a\\s+las?|desde\\s+(?:las\\s+)?|hasta\\s+(?:las\\s+)?|de\\s+(?:las\\s+)?)\\s+(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?(?:\\s+y\\s+(media|cuarto))?\\s*(?:h|hs|horas)?(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
+    new RegExp(`\\b(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s*(h|hs|horas)\\b(?:\\s+(?:de\\s+la\\s+|del\\s+)?(manana|tarde|noche|madrugada|mediodia))?`,"g"),
+    new RegExp(`\\b(${numero})\\s+(?:del\\s+mediodia)\\b`,"g")
+  ];
+
+  for(const patron of patrones){
+    let match;
+    while((match = patron.exec(textoNormalizado))){
+      const h = NUMEROS[match[1]] ?? Number(match[1]);
+      const palabraMinuto = match[3] === "media" || match[3] === "cuarto" ? match[3] : "";
+      const minuto = palabraMinuto === "media" ? 30 : palabraMinuto === "cuarto" ? 15 : Number(match[2] || 0);
+      let periodo = match[4] || "";
+      if(periodo === "mediodia") periodo = h === 12 ? "" : "tarde";
+      if(!periodo){
+        const alrededor = textoNormalizado.slice(match.index,match.index+match[0].length+45);
+        periodo = alrededor.match(/(?:de\s+la\s+)?(tarde|noche|manana|madrugada|mediodia)/)?.[1] || "";
+        if(periodo === "mediodia") periodo = h === 12 ? "" : "tarde";
+      }
+      const hora = convertirHora(h,minuto,periodo);
+      if(hora && !resultados.some(x => x.index === match.index && x.hora === hora)){
+        resultados.push({hora,index:match.index,texto:match[0],periodo});
+      }
+    }
+  }
+
+  const pares = [...textoNormalizado.matchAll(/\b(\d{1,2})\s+(\d{2})\b/g)]
+    .filter(x => Number(x[2]) <= 59);
+  if(pares.length >= 2){
+    for(const match of pares){
+      const hora = convertirHora(Number(match[1]),Number(match[2]),"");
+      if(hora && !resultados.some(x => x.index === match.index)){
+        resultados.push({hora,index:match.index,texto:match[0],periodo:""});
+      }
+    }
+  }
+
+  return resultados.sort((a,b) => a.index-b.index).filter((x,i,lista) => !lista.slice(0,i).some(y => y.hora === x.hora && Math.abs(y.index-x.index) < 8));
+}
+
+function extraerHora(textoNormalizado){
+  return extraerHoras(textoNormalizado)[0]?.hora || null;
+}
+
+function extraerDuracion(textoNormalizado){
+  const match = textoNormalizado.match(/(?:dura|durara|va\s+a\s+durar|durante|por|me\s+voy\s+a\s+demorar|voy\s+a\s+demorar|demoro|tarda(?:re)?)\s+(\d+(?:[.,]\d+)?|una|uno|dos|tres|cuatro|cinco|seis)\s*(hora|horas|minuto|minutos)/);
+  if(!match) return null;
+  const cantidad = NUMEROS[match[1]] ?? Number(match[1].replace(",","."));
+  return match[2].startsWith("hora") ? cantidad*60 : cantidad;
+}
+
+function extraerFecha(textoNormalizado, hora){
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  if(textoNormalizado.includes("pasado manana")){
+    return fechaLocalISO(sumarDias(hoy,2));
+  }
+
+  if(textoNormalizado.includes("manana")){
+    return fechaLocalISO(sumarDias(hoy,1));
+  }
+
+  if(textoNormalizado.includes("hoy")){
+    return fechaLocalISO(hoy);
+  }
+
+  const fechaNumerica = textoNormalizado.match(
+    /(?:el\s+)?(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/
+  );
+
+  if(fechaNumerica){
+    const dia = Number(fechaNumerica[1]);
+    const mes = Number(fechaNumerica[2])-1;
+    let anio = fechaNumerica[3]
+      ? Number(fechaNumerica[3])
+      : hoy.getFullYear();
+
+    if(anio < 100) anio += 2000;
+
+    const fecha = new Date(anio,mes,dia);
+    return fechaLocalISO(fecha);
+  }
+
+  const meses = {enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11};
+  const fechaEscrita = textoNormalizado.match(/(?:el\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?/);
+  if(fechaEscrita){
+    const fecha = new Date(Number(fechaEscrita[3] || hoy.getFullYear()),meses[fechaEscrita[2]],Number(fechaEscrita[1]));
+    return fechaLocalISO(fecha);
+  }
+
+  const dias = {
+    domingo:0,
+    lunes:1,
+    martes:2,
+    miercoles:3,
+    jueves:4,
+    viernes:5,
+    sabado:6
+  };
+
+  for(const [nombre,indice] of Object.entries(dias)){
+    if(textoNormalizado.includes(nombre)){
+      let diferencia = (indice-hoy.getDay()+7)%7;
+
+      if(diferencia === 0){
+        const ahora = new Date();
+        const [h,m] = (hora || "23:59").split(":").map(Number);
+        const momento = new Date(hoy);
+        momento.setHours(h,m,0,0);
+
+        if(momento <= ahora) diferencia = 7;
+      }
+
+      return fechaLocalISO(sumarDias(hoy,diferencia));
+    }
+  }
+
+  return null;
+}
+
+function clasificarIntencion(textoNormalizado){
+  if(/\b(clima|tiempo|temperatura|pronostico)\b/.test(textoNormalizado)) return "clima";
+  if(/\b(que tengo|que tarea|que hay|que dias tengo|que dia tengo|cuando tengo|mostrame|mostrar|consultar|cual es|como esta mi agenda|como esta la agenda|agenda de hoy|en mi agenda)\b/.test(textoNormalizado)) return "consultar";
+  if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:ar|ame|alo|arla|arlo|en)?|reprogram\w*|modific\w*)\b/.test(textoNormalizado)) return "modificar";
+  if(/\b(eliminar|elimina|eliminame|borrar|borra|borrame|cancelar|cancela|cancelame|sacar|saca|sacame)\b/.test(textoNormalizado)) return "eliminar";
+  if(/\b(agendar|agenda|agendas|agendame|agendes|guardar|guarda|anotar|anota|recordame|crea|crear|programa|programar)\b/.test(textoNormalizado)) return "crear";
+  if(/\b(tengo|voy|debo|necesito|juego|rindo|llevo|paso)\b/.test(textoNormalizado)) return "informar";
+  return "ambigua";
+}
+
+function datosSegunActividad(textoNormalizado, textoOriginal){
+  if(textoNormalizado.includes("futbol")){
+    const acompanante = textoOriginal.match(/(?:llevar|llevo|llevaré|acompañar|acompanar|acompaño)\s+a\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+)\s+a(?:l)?\s+f[uú]tbol/i);
+    return {
+      titulo:acompanante
+        ? `Llevar a ${acompanante[1]} a fútbol`
+        : textoNormalizado.includes("amigo") ? "Fútbol con amigos" : "Fútbol",
+      icono:"⚽",
+      duracion:120,
+      motivoAviso:"para que tengas tiempo de prepararte y llegar"
+    };
+  }
+
+  if(/\b(gimnasio|gym)\b/.test(textoNormalizado)){
+    return {
+      titulo:"Gimnasio",
+      icono:"🏋️",
+      duracion:60,
+      motivoAviso:"para que puedas organizarte y llegar con tiempo"
+    };
+  }
+
+  if(textoNormalizado.includes("reunion")){
+    let titulo = "Reunión";
+
+    if(textoNormalizado.includes("escuela")){
+      titulo = "Reunión con la escuela";
+    }
+
+    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
+    if(persona) titulo = `Reunión con ${persona[1]}`;
+
+    return {
+      titulo,
+      icono:"🤝",
+      duracion:60,
+      motivoAviso:"para que tengas tiempo de prepararte"
+    };
+  }
+
+  if(/dentista|odontolog/.test(textoNormalizado)){
+    return {titulo:"Turno con el dentista",icono:"🦷",duracion:60,motivoAviso:"para que puedas salir con tiempo"};
+  }
+
+  if(/medico|doctora?|hospital|clinica/.test(textoNormalizado)){
+    const persona = textoOriginal.match(/llevar\s+a\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,2}?)(?=\s+(?:al|a\s+la|el|la|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;]|$)/i);
+    return {titulo:persona ? `Llevar a ${persona[1]} al médico` : "Turno médico",icono:"🩺",duracion:60,motivoAviso:"para que puedas salir con tiempo"};
+  }
+
+  if(/mecanico|auto|embrague/.test(textoNormalizado)){
+    return {titulo:"Llevar el auto al mecánico",icono:"🚗",duracion:60,motivoAviso:"para que puedas organizar el traslado"};
+  }
+
+  if(/supermercado|compras/.test(textoNormalizado)){
+    return {titulo:"Hacer compras en el supermercado",icono:"🛒",duracion:60,motivoAviso:"para que puedas organizarte"};
+  }
+
+  if(/\b(pedido|entrega|entregar)\b/.test(textoNormalizado)){
+    return {titulo:"Entregar un pedido",icono:"📦",duracion:60,motivoAviso:"para que puedas prepararlo y llegar con tiempo"};
+  }
+
+  if(/\b(levantarme|despertarme|despertar|levantar)\b/.test(textoNormalizado)){
+    return {titulo:"Levantarse",icono:"⏰",duracion:15,motivoAviso:"para que puedas comenzar el día a tiempo"};
+  }
+
+  if(/\b(examen|parcial|prueba)\b/.test(textoNormalizado)){
+    const materia = textoOriginal.match(/(?:examen|parcial|prueba)\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ ]+?)(?=\s+(?:en|el|la|hoy|mañana|a\s+las?)\b|[.,;]|$)/i)?.[1]?.trim();
+    return {titulo:materia ? `Evaluación de ${materia}` : "Evaluación",icono:"📝",duracion:60,motivoAviso:"para que puedas prepararte con tiempo"};
+  }
+
+  if(textoNormalizado.includes("turno")){
+    return {
+      titulo:"Turno",
+      icono:"📅",
+      duracion:60,
+      motivoAviso:"para que puedas salir con tiempo y llevar lo necesario"
+    };
+  }
+
+  return {
+    titulo:textoOriginal.trim().slice(0,60),
+    icono:"📌",
+    duracion:60,
+    motivoAviso:"para que puedas organizarte con tiempo"
+  };
+}
+
+function extraerMotivo(textoOriginal){
+  const match = textoOriginal.match(/\b(?:para|porque|por)\s+(.+?)(?:[.,]|$)/i);
+  if(!match || /^(?:\d+(?:[.,]\d+)?|una?|dos|tres|cuatro|cinco|seis)\s*(?:hora|minuto)/i.test(match[1])) return "";
+  return match[1].trim();
+}
+
+function interpretar(texto){
+  const normal = normalizar(texto);
+  const limpio = limpiarCorrecciones(normal);
+  const horasDetectadas = extraerHoras(limpio);
+  const hora = horasDetectadas[0]?.hora || null;
+  const fecha = extraerFecha(limpio,hora);
+  const actividad = datosSegunActividad(limpio,texto);
+  const duracionExplicita = extraerDuracion(limpio);
+
+  let duracion = duracionExplicita || actividad.duracion;
+  if(horasDetectadas.length > 1){
+    const inicio = minutos(horasDetectadas[0].hora);
+    const fin = minutos(horasDetectadas[horasDetectadas.length-1].hora);
+    if(fin > inicio && /\b(desde|de)\b/.test(limpio)) duracion = fin-inicio;
+  }
+
+  return {
+    id:Date.now(),
+    accion:clasificarIntencion(limpio),
+    titulo:actividad.titulo,
+    icono:actividad.icono,
+    fecha,
+    hora,
+    horaAmbigua:Boolean(hora && !horasDetectadas[0]?.periodo && Number(hora.split(":")[0]) > 0 && Number(hora.split(":")[0]) < 8),
+    duracion,
+    duracionExplicita:Boolean(duracionExplicita || (horasDetectadas.length > 1 && /\b(desde|de)\b/.test(limpio))),
+    motivo:extraerMotivo(texto),
+    avisoMinutos:60,
+    motivoAviso:actividad.motivoAviso,
+    textoOriginal:texto
+  };
+}
+
+function diasRecurrentes(textoNormalizado){
+  const dias = {domingo:0,lunes:1,martes:2,miercoles:3,jueves:4,viernes:5,sabado:6};
+  return Object.entries(dias).filter(([nombre]) => textoNormalizado.includes(nombre)).map(([,indice]) => indice);
+}
+
+function generarRecurrencia(evento){
+  const limpio = normalizar(evento.textoOriginal);
+  const dias = diasRecurrentes(limpio);
+  if((!(/\b(todos|cada)\b/.test(limpio)) && dias.length < 2) || !dias.length || !evento.hora) return [];
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const inicioSerie = evento.fecha ? fechaDesdeISO(evento.fecha) : new Date(hoy);
+  inicioSerie.setHours(0,0,0,0);
+  const hasta = new Date(inicioSerie);
+  const meses = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|un|uno|dos|tres|cuatro|seis)\s+mes/);
+  const semanas = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|una|uno|dos|tres|cuatro|seis)\s+semana/);
+  if(meses){
+    const cantidad = NUMEROS[meses[1]] || (meses[1] === "un" ? 1 : Number(meses[1]));
+    hasta.setMonth(hasta.getMonth()+cantidad);
+  }else if(semanas){
+    const cantidad = NUMEROS[semanas[1]] || Number(semanas[1]);
+    // "Durante dos semanas" incluye exactamente catorce días contando el inicial.
+    hasta.setDate(hasta.getDate()+cantidad*7-1);
+  }else if(/hasta\s+(?:fin|final)\s+de\s+mes/.test(limpio)){
+    hasta.setMonth(hasta.getMonth()+1,0);
+  }else{
+    hasta.setMonth(hasta.getMonth()+1);
+  }
+
+  const grupo = `rec-${Date.now()}`;
+  const serie = [];
+  for(let fecha = new Date(inicioSerie); fecha <= hasta; fecha = sumarDias(fecha,1)){
+    if(dias.includes(fecha.getDay())){
+      serie.push({...evento,id:Date.now()+serie.length,fecha:fechaLocalISO(fecha),grupoRecurrencia:grupo});
+    }
+  }
+  return serie;
+}
+
+function interpretarMultiples(texto){
+  const limpio = normalizar(texto);
+  if(/\b(no\s+mejor|quise decir|en realidad|perdon)\b/.test(limpio)) return [];
+  const marcadores = [...limpio.matchAll(/\b(futbol|gimnasio|gym|reunion|dentista|odontolog\w*|supermercado|compras|medico|doctora?|mecanico|parcial|examen|prueba|asado)\b/g)];
+  if(marcadores.length < 2) return [];
+  const fechaGeneral = extraerFecha(limpio,extraerHora(limpio));
+  const periodo = limpio.match(/de\s+la\s+(tarde|noche|manana|madrugada)/)?.[1] || "";
+  const prefijo = texto.slice(0,marcadores[0].index);
+  const eventos = marcadores.map((marca,index) => {
+    const inicio = marca.index;
+    const fin = marcadores[index+1]?.index ?? texto.length;
+    let ampliada = `${prefijo} ${texto.slice(inicio,fin)}`.replace(/\s+y\s*$/i,"").trim();
+    if(periodo && !/de\s+la\s+(tarde|noche|manana|madrugada)/i.test(ampliada)) ampliada += ` de la ${periodo}`;
+    const evento = interpretar(ampliada);
+    evento.accion = "crear";
+    evento.fecha = evento.fecha || fechaGeneral;
+    evento.id = Date.now()+index;
+    return evento;
+  }).filter(x => x.hora);
+
+  return eventos.length > 1 ? eventos : [];
+}
+
+function minutos(hora){
+  const [h,m] = hora.split(":").map(Number);
+  return h*60+m;
+}
+
+function aHora(total){
+  total = Math.max(0,Math.min(total,23*60+59));
+  return `${String(Math.floor(total/60)).padStart(2,"0")}:${String(total%60).padStart(2,"0")}`;
+}
+
+function buscarConflictos(evento){
+  if(!evento.fecha || !evento.hora) return [];
+
+  const inicio = minutos(evento.hora);
+  const fin = inicio+evento.duracion;
+
+  return obtenerAgenda().filter(existente => {
+    if(existente.id === evento.idOriginal || existente.id === evento.excluirId) return false;
+    if(existente.fecha !== evento.fecha) return false;
+
+    const inicioExistente = minutos(existente.hora);
+    const finExistente = inicioExistente+existente.duracion;
+
+    return inicio < finExistente && fin > inicioExistente;
+  });
+}
+
+function fechaBonita(iso){
+  const fecha = fechaDesdeISO(iso);
+
+  return fecha.toLocaleDateString("es-AR",{
+    weekday:"long",
+    day:"numeric",
+    month:"long"
+  });
+}
+
+function mayuscula(texto){
+  return texto.charAt(0).toUpperCase()+texto.slice(1);
+}
+
+function detalleEvento(evento){
+  const fin = evento.hora ? aHora(minutos(evento.hora)+evento.duracion) : "";
+  return `
+    <div class="event-row">
+      <div class="event-icon">${evento.icono}</div>
+      <div class="event-data">
+        <div class="event-title">${escapar(evento.titulo)}</div>
+        <div>${mayuscula(fechaBonita(evento.fecha))} · ${evento.hora}–${fin}</div>
+        ${evento.motivo ? `<div class="small"><b>Motivo:</b> ${escapar(evento.motivo)}</div>` : ""}
+        <div class="small">
+          Aviso: 1 hora antes, ${escapar(evento.motivoAviso)}.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function mismaActividad(a,b){
+  if(!a || !b || b.icono === "📌") return true;
+  return coincideActividad(a,b);
+}
+
+function esRespuestaAlPendiente(texto,pendiente){
+  const normal = normalizar(texto);
+  if(/\b(cancelar|cancela|dejalo|deja eso|olvidalo)\b/.test(normal)) return "cancelar";
+  const complemento = interpretar(texto);
+  const cambiaActividad = complemento.icono !== "📌" && !mismaActividad(pendiente.evento,complemento);
+  if(cambiaActividad || (/\b(agendame|agenda|crear|crea|eliminar|borra|consultar|que tengo)\b/.test(normal) && complemento.icono !== "📌")){
+    return "nueva";
+  }
+  return "respuesta";
+}
+
+function botonesConversacion(){
+  return `<button class="secondary" onclick="escuchar()">🎙️ Responder ahora</button><button class="secondary" onclick="cancelar()">Cancelar esta conversación</button>`;
+}
+
+function ordenar(){
+  const entrada = document.getElementById("entrada");
+  const resultado = document.getElementById("resultado");
+  const texto = entrada.value.trim();
+
+  if(!texto){
+    resultado.innerHTML =
+      '<div class="c">Decime algo y lo ordenamos.</div>';
+    return;
+  }
+
+  if(conversacionPendiente){
+    const tipoMensaje = esRespuestaAlPendiente(texto,conversacionPendiente);
+    if(tipoMensaje === "cancelar"){
+      cancelar();
+      return;
+    }
+    if(tipoMensaje === "respuesta"){
+      completarConversacion(texto);
+      return;
+    }
+    conversacionPendiente = null;
+    eventoPendiente = null;
+  }
+
+  eventoPendiente = null;
+  eventosPendientes = [];
+  const accionGeneral = clasificarIntencion(normalizar(texto));
+  if(accionGeneral === "crear" || accionGeneral === "informar"){
+    const multiples = interpretarMultiples(texto);
+    if(multiples.length > 1){
+      mostrarMultiples(multiples);
+      return;
+    }
+  }
+  const evento = interpretar(texto);
+
+  if(evento.accion === "clima"){
+    resultado.innerHTML = `<div class="c query"><b>🌤️ Entendí que querés consultar el clima.</b><p>Todavía no tengo conectado el servicio meteorológico de Mendoza.</p><div class="small">No creé ninguna actividad. Esta intención queda preparada para una futura integración.</div></div>`;
+    return;
+  }
+
+  if(evento.accion === "consultar"){
+    consultarAgenda(evento);
+    return;
+  }
+
+  if(evento.accion === "modificar"){
+    prepararModificacion(evento);
+    return;
+  }
+
+  if(evento.accion === "eliminar"){
+    prepararEliminacion(evento);
+    return;
+  }
+
+  if(evento.accion === "informar" || evento.accion === "ambigua"){
+    eventoPendiente = evento;
+    resultado.innerHTML = `
+      <div class="c query">
+        <b>Entendí la información, pero no quiero asumir.</b>
+        <p>¿Querés que lo agende o solamente me lo estabas contando?</p>
+        <button class="primary" onclick="confirmarComoCreacion()">Agendarlo</button>
+        <button class="secondary" onclick="cancelar()">Solo era información</button>
+      </div>`;
+    return;
+  }
+
+  procesarCreacion(evento);
+}
+
+function procesarCreacion(evento){
+  const resultado = document.getElementById("resultado");
+
+  if(!evento.fecha && !evento.hora){
+    conversacionPendiente = {tipo:"completar",evento,falta:"fecha y hora"};
+    resultado.innerHTML = `
+      <div class="c info">
+        <b>¿Cuándo sería?</b>
+        <p>Ya entendí: ${escapar(evento.titulo)}.</p>
+        <div class="small">Respondeme con el día y la hora; voy a continuar este mismo evento.</div>
+        ${botonesConversacion()}
+      </div>
+    `;
+    return;
+  }
+
+  if(!evento.fecha){
+    conversacionPendiente = {tipo:"completar",evento,falta:"fecha"};
+    resultado.innerHTML = `
+      <div class="c info">
+        <b>¿Qué día querés hacer esto?</b>
+        <p>Ya entendí que sería a las ${evento.hora}.</p>
+        ${botonesConversacion()}
+      </div>
+    `;
+    return;
+  }
+
+  if(!evento.hora){
+    conversacionPendiente = {tipo:"completar",evento,falta:"hora"};
+    resultado.innerHTML = `
+      <div class="c info">
+        <b>¿A qué hora sería?</b>
+        <p>Ya entendí que es el ${fechaBonita(evento.fecha)}.</p>
+        ${botonesConversacion()}
+      </div>
+    `;
+    return;
+  }
+
+  if(evento.horaAmbigua){
+    conversacionPendiente = {tipo:"periodo",evento};
+    resultado.innerHTML = `<div class="c info"><b>Quiero confirmar el horario.</b><p>¿${evento.hora} de la mañana o de la tarde?</p><div class="small">Ya conservé el resto del evento; respondeme solamente “de la mañana” o “de la tarde”.</div>${botonesConversacion()}</div>`;
+    return;
+  }
+
+  const serie = generarRecurrencia(evento);
+  if(serie.length){
+    mostrarRecurrencia(serie);
+    return;
+  }
+
+  const duplicado = obtenerAgenda().find(x =>
+    x.fecha === evento.fecha && x.hora === evento.hora &&
+    normalizar(x.titulo) === normalizar(evento.titulo)
+  );
+  if(duplicado){
+    eventoPendiente = evento;
+    resultado.innerHTML = `<div class="c warn"><b>Este evento parece estar repetido.</b><div style="margin-top:12px">${detalleEvento(duplicado)}</div><p>¿Querés guardarlo igualmente?</p><button class="primary" onclick="guardarConPermiso()">Sí, duplicarlo</button><button class="secondary" onclick="cancelar()">No, conservar uno solo</button></div>`;
+    return;
+  }
+
+  eventoPendiente = evento;
+  mostrarRevision();
+}
+
+function mostrarMultiples(eventos){
+  eventosPendientes = eventos;
+  const incompletos = eventos.filter(x => !x.fecha || !x.hora);
+  if(incompletos.length){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Detecté varias actividades, pero falta información.</b><p>${eventos.map((x,i) => `${i+1}. ${escapar(x.titulo)} — ${x.fecha ? fechaBonita(x.fecha) : "día pendiente"} · ${x.hora || "hora pendiente"}`).join("<br>")}</p><div class="small">No guardé nada. Decímelas nuevamente aclarando los datos que faltan.</div></div>`;
+    return;
+  }
+  const cruces = conflictosInternos(eventos);
+  const externos = eventos.flatMap(evento => buscarConflictos(evento).map(existente => [evento,existente]));
+  const resumenCruces = cruces.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> (${a.hora}–${aHora(minutos(a.hora)+a.duracion)}) se superpone con <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const resumenExternos = externos.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> se superpone con un evento ya guardado: <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const totalCruces = cruces.length+externos.length;
+  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventos.length} eventos</b><div style="margin-top:12px">${eventos.map(detalleEvento).join("<hr>")}</div></div>${totalCruces ? `<div class="c warn"><b>⚠️ Encontré ${totalCruces} ${totalCruces === 1 ? "superposición" : "superposiciones"}.</b>${resumenCruces}${resumenExternos}<div class="small">No guardé nada todavía.</div></div>` : `<div class="c success"><b>No encontré conflictos entre las actividades ni con tu agenda.</b></div>`}<div class="c info"><p>¿Querés guardar igualmente los ${eventos.length} eventos?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar todos</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+}
+
+function conflictosInternos(eventos){
+  const cruces = [];
+  for(let i=0;i<eventos.length;i++){
+    for(let j=i+1;j<eventos.length;j++){
+      const a = eventos[i], b = eventos[j];
+      if(a.fecha !== b.fecha) continue;
+      if(minutos(a.hora) < minutos(b.hora)+b.duracion && minutos(a.hora)+a.duracion > minutos(b.hora)) cruces.push([a,b]);
+    }
+  }
+  return cruces;
+}
+
+function mostrarRecurrencia(serie){
+  eventosPendientes = serie;
+  const primero = serie[0];
+  const ultimo = serie[serie.length-1];
+  const dias = [...new Set(serie.map(x => fechaDesdeISO(x.fecha).toLocaleDateString("es-AR",{weekday:"long"})))];
+  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí una actividad recurrente</b><div style="margin-top:12px">${primero.icono} <b>${escapar(primero.titulo)}</b><br>${dias.map(mayuscula).join(", ")} · ${primero.hora}<br><span class="small">Desde ${fechaBonita(primero.fecha)} hasta ${fechaBonita(ultimo.fecha)} · ${serie.length} eventos</span></div></div><div class="c success"><p>¿Querés guardar toda la serie?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar la serie</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+}
+
+function guardarMultiples(){
+  if(!eventosPendientes.length) return;
+  const agenda = obtenerAgenda();
+  const guardados = eventosPendientes.map(x => ({...x}));
+  agenda.push(...guardados);
+  agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  guardarAgenda(agenda);
+  eventosPendientes = [];
+  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, guardé ${guardados.length} eventos</b><div class="small">Cada actividad quedó registrada con su fecha y horario.</div><button class="primary" onclick="abrirAgenda()">Ver en mi agenda</button></div>`;
+  renderAgenda(); actualizarProximo();
+}
+
+function completarConversacion(respuesta){
+  const pendiente = conversacionPendiente;
+  conversacionPendiente = null;
+  const complemento = interpretar(respuesta);
+  if(pendiente.tipo === "periodo"){
+    const r = normalizar(respuesta);
+    if(!/\b(manana|tarde|noche|madrugada)\b/.test(r)){
+      conversacionPendiente = pendiente;
+      document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿De la mañana o de la tarde?</b><p>Necesito esa aclaración para no inventar el horario.</p></div>`;
+      return;
+    }
+    const [h,m] = pendiente.evento.hora.split(":").map(Number);
+    pendiente.evento.hora = convertirHora(h,m,r);
+    pendiente.evento.horaAmbigua = false;
+    procesarCreacion(pendiente.evento);
+    return;
+  }
+  if(pendiente.tipo === "modificar"){
+    if(!complemento.hora){
+      conversacionPendiente = pendiente;
+      document.getElementById("resultado").innerHTML = `<div class="c info"><b>No llegué a identificar el nuevo horario.</b><p>Decímelo, por ejemplo: “A las seis de la tarde”.</p></div>`;
+      return;
+    }
+    eventoPendiente = {...pendiente.evento,hora:complemento.hora,idOriginal:pendiente.evento.id,accion:"modificar"};
+    mostrarConfirmacionModificacion(pendiente.evento);
+    return;
+  }
+  const evento = {
+    ...pendiente.evento,
+    fecha:complemento.fecha || pendiente.evento.fecha,
+    hora:complemento.hora || pendiente.evento.hora,
+    duracion:complemento.duracionExplicita ? complemento.duracion : pendiente.evento.duracion,
+    duracionExplicita:complemento.duracionExplicita || pendiente.evento.duracionExplicita
+  };
+  procesarCreacion(evento);
+}
+
+function confirmarComoCreacion(){
+  if(!eventoPendiente) return;
+  eventoPendiente.accion = "crear";
+  const evento = eventoPendiente;
+  eventoPendiente = null;
+  procesarCreacion(evento);
+}
+
+function coincideActividad(evento,filtro){
+  const a = normalizar(evento.titulo);
+  const b = normalizar(filtro.titulo);
+  const original = normalizar(filtro.textoOriginal || "");
+  const generico = b === original.slice(0,60);
+
+  // Cuando se menciona una persona, la coincidencia debe ser exacta.
+  // Así “Reunión con Fernando” no selecciona reuniones con otras personas.
+  if(/^reunion con .+/.test(b)) return a === b;
+  if(b === "reunion") return a === "reunion" || a.startsWith("reunion con ");
+
+  return generico || a.includes(b) || b.includes(a) ||
+    (a.includes("futbol") && b.includes("futbol")) ||
+    (a.includes("gimnasio") && /gimnasio|gym/.test(b));
+}
+
+function consultarAgenda(filtro){
+  let agenda = obtenerAgenda();
+  if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
+  if(filtro.hora) agenda = agenda.filter(x => x.hora === filtro.hora);
+  if(filtro.icono !== "📌") agenda = agenda.filter(x => coincideActividad(x,filtro));
+  const resultado = document.getElementById("resultado");
+
+  if(!agenda.length){
+    resultado.innerHTML = `<div class="c query"><b>No encontré actividades${filtro.fecha ? ` para el ${fechaBonita(filtro.fecha)}` : ""}${filtro.hora ? ` a las ${filtro.hora}` : ""}.</b><div class="small">No hice ningún cambio en tu agenda.</div></div>`;
+    return;
+  }
+
+  resultado.innerHTML = `<div class="c query"><b>📅 Esto figura en tu agenda</b><div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+}
+
+function fechasMencionadas(texto,hora){
+  const normal = normalizar(texto);
+  const dias = [...normal.matchAll(/\b(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/g)];
+  const fechas = dias.map(x => ({nombre:x[1],index:x.index,fecha:extraerFecha(x[1],hora)}));
+  for(let i=1;i<fechas.length;i++){
+    let actual = fechaDesdeISO(fechas[i].fecha);
+    const anterior = fechaDesdeISO(fechas[i-1].fecha);
+    while(actual <= anterior) actual = sumarDias(actual,7);
+    fechas[i].fecha = fechaLocalISO(actual);
+  }
+  return fechas;
+}
+
+function prepararModificacion(pedido){
+  const horas = extraerHoras(limpiarCorrecciones(normalizar(pedido.textoOriginal)));
+  const fechas = fechasMencionadas(pedido.textoOriginal,horas[0]?.hora);
+  let horaOrigen = horas.length > 1 ? horas[0].hora : null;
+  let horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
+  const fechaOrigen = fechas[0]?.fecha || pedido.fecha;
+  const fechaNueva = fechas.length > 1 ? fechas[fechas.length-1].fecha : null;
+  let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
+  if(fechaOrigen) candidatos = candidatos.filter(x => x.fecha === fechaOrigen);
+
+  if(horaOrigen){
+    const candidatosActividad = [...candidatos];
+    let coincidencias = candidatosActividad.filter(x => x.hora === horaOrigen);
+
+    if(!coincidencias.length && Number(horaOrigen.split(":")[0]) < 12){
+      const origenTarde = convertirHora(Number(horaOrigen.split(":")[0])+12,Number(horaOrigen.split(":")[1]),"");
+      coincidencias = candidatosActividad.filter(x => x.hora === origenTarde);
+      if(coincidencias.length){
+        horaOrigen = origenTarde;
+        if(horaNueva && !horas[horas.length-1]?.periodo && Number(horaNueva.split(":")[0]) < 12){
+          horaNueva = convertirHora(Number(horaNueva.split(":")[0])+12,Number(horaNueva.split(":")[1]),"");
+        }
+      }
+    }
+
+    candidatos = coincidencias;
+  }
+
+  if(!candidatos.length){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré el evento que querés modificar.</b><p>Probá mencionando la actividad, el día y su horario actual.</p><div class="small">No hice ningún cambio.</div></div>`;
+    return;
+  }
+  if(candidatos.length > 1 && !horaOrigen){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento parecido.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime también su horario actual para elegir el correcto.</p><div class="small">No hice ningún cambio.</div></div>`;
+    return;
+  }
+  if(!horaNueva || (horas.length < 2 && horaNueva === candidatos[0].hora)){
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué nuevo horario querés moverlo?</b><p>${detalleEvento(candidatos[0])}</p></div>`;
+    conversacionPendiente = {tipo:"modificar",evento:candidatos[0]};
+    return;
+  }
+
+  const original = candidatos[0];
+  eventoPendiente = {...original,fecha:fechaNueva || original.fecha,hora:horaNueva,id:original.id,accion:"modificar",idOriginal:original.id};
+  mostrarConfirmacionModificacion(original);
+}
+
+function mostrarConfirmacionModificacion(original){
+  const conflictos = buscarConflictos(eventoPendiente);
+  const aviso = conflictos.length ? `<div class="c warn"><b>⚠️ Este cambio genera un conflicto.</b><p><b>Se superpone con:</b></p>${conflictos.map(detalleEvento).join("<hr>")}<div class="small">Todavía no modifiqué nada.</div></div>` : `<div class="c success"><b>No encontré conflictos para el nuevo horario.</b></div>`;
+  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Entendí que querés modificar esto</b><p><b>Antes:</b></p>${detalleEvento(original)}<hr><p><b>Después:</b></p>${detalleEvento(eventoPendiente)}</div>${aviso}<div class="c info"><button class="primary" onclick="confirmarModificacion()">${conflictos.length ? "Modificar igualmente" : "Sí, modificar"}</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+}
+
+function confirmarModificacion(){
+  if(!eventoPendiente?.idOriginal) return;
+  const actualizado = {...eventoPendiente};
+  delete actualizado.idOriginal;
+  delete actualizado.accion;
+  const agenda = obtenerAgenda().map(x => x.id === eventoPendiente.idOriginal ? actualizado : x);
+  guardarAgenda(agenda);
+  eventoPendiente = null;
+  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, modifiqué el evento</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`;
+  renderAgenda(); actualizarProximo();
+}
+
+function prepararEliminacion(pedido){
+  let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
+  if(pedido.fecha) candidatos = candidatos.filter(x => x.fecha === pedido.fecha);
+  if(pedido.hora) candidatos = candidatos.filter(x => x.hora === pedido.hora);
+  if(!candidatos.length){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré ese evento.</b><div class="small">No eliminé nada.</div></div>`;
+    return;
+  }
+  if(candidatos.length > 1){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento que coincide.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime el día o el horario para identificar cuál querés eliminar.</p><div class="small">No eliminé nada.</div></div>`;
+    return;
+  }
+  eventoPendiente = {...candidatos[0],accion:"eliminar"};
+  document.getElementById("resultado").innerHTML = `<div class="c warn"><b>¿Querés eliminar este evento?</b><div style="margin-top:12px">${detalleEvento(eventoPendiente)}</div><button class="primary danger" onclick="confirmarEliminacion()">Sí, eliminar</button><button class="secondary" onclick="cancelar()">No, conservar</button></div>`;
+}
+
+function confirmarEliminacion(){
+  if(!eventoPendiente) return;
+  guardarAgenda(obtenerAgenda().filter(x => x.id !== eventoPendiente.id));
+  eventoPendiente = null;
+  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Evento eliminado</b><div class="small">La agenda quedó actualizada.</div></div>`;
+  renderAgenda(); actualizarProximo();
+}
+
+function mostrarRevision(){
+  const resultado = document.getElementById("resultado");
+  const conflictos = buscarConflictos(eventoPendiente);
+
+  if(conflictos.length === 0){
+    resultado.innerHTML = `
+      <div class="c">
+        <b>🧠 Entendí esto</b>
+        <div style="margin-top:12px">
+          ${detalleEvento(eventoPendiente)}
+        </div>
+      </div>
+
+      <div class="c success">
+        <b>No encontré conflictos.</b>
+        <p>¿Querés que lo guarde?</p>
+        <button class="primary" onclick="guardarConPermiso()">
+          Sí, guardar en mi agenda
+        </button>
+        <button class="secondary" onclick="cancelar()">
+          No, cancelar
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  const conflicto = conflictos[0];
+  const inicioCruce = Math.max(minutos(eventoPendiente.hora),minutos(conflicto.hora));
+  const finCruce = Math.min(minutos(eventoPendiente.hora)+eventoPendiente.duracion,minutos(conflicto.hora)+conflicto.duracion);
+  const antes = buscarHoraLibre(eventoPendiente,-1);
+  const despues = buscarHoraLibre(eventoPendiente,1);
+
+  resultado.innerHTML = `
+    <div class="c">
+      <b>🧠 Entendí esto</b>
+      <div style="margin-top:12px">
+        ${detalleEvento(eventoPendiente)}
+      </div>
+    </div>
+
+    <div class="c warn">
+      <b>⚠️ Hay un problema</b>
+      <p><b>Tu propuesta:</b><br>${eventoPendiente.icono} ${escapar(eventoPendiente.titulo)} · ${eventoPendiente.hora}–${aHora(minutos(eventoPendiente.hora)+eventoPendiente.duracion)}</p>
+      <p><b>Se superpone con:</b><br>${conflicto.icono} ${escapar(conflicto.titulo)} · ${conflicto.hora}–${aHora(minutos(conflicto.hora)+conflicto.duracion)}</p>
+      <div class="small">El cruce ocurre entre las ${aHora(inicioCruce)} y las ${aHora(finCruce)}.</div>
+
+      <div class="small">
+        Elegí una opción. Atlas no va a cambiar ni guardar nada sin tu permiso.
+      </div>
+
+      <button class="option" onclick="elegirHora('${antes}')">
+        Mover ${escapar(eventoPendiente.titulo)} a las ${antes}
+      </button>
+
+      <button class="option" onclick="elegirHora('${despues}')">
+        Mover ${escapar(eventoPendiente.titulo)} a las ${despues}
+      </button>
+
+      <button class="option" onclick="mantenerConflicto()">
+        Mantener ambos en el mismo horario
+      </button>
+
+      <button class="option" onclick="cancelar()">
+        Cancelar
+      </button>
+    </div>
+  `;
+}
+
+function buscarHoraLibre(evento,direccion){
+  let candidato = minutos(evento.hora);
+
+  for(let i=0;i<12;i++){
+    candidato += 30*direccion;
+
+    if(candidato < 0 || candidato > 23*60) break;
+
+    const temporal = {...evento,hora:aHora(candidato)};
+
+    if(buscarConflictos(temporal).length === 0){
+      return temporal.hora;
+    }
+  }
+
+  return evento.hora;
+}
+
+function elegirHora(hora){
+  eventoPendiente.hora = hora;
+  mostrarConfirmacionFinal(
+    `Moví la propuesta a las ${hora} para evitar el conflicto.`
+  );
+}
+
+function mantenerConflicto(){
+  mostrarConfirmacionFinal(
+    "Vas a mantener dos actividades en el mismo horario."
+  );
+}
+
+function mostrarConfirmacionFinal(mensaje){
+  document.getElementById("resultado").innerHTML = `
+    <div class="c info">
+      <b>Antes de hacerlo</b>
+      <p>${escapar(mensaje)}</p>
+      ${detalleEvento(eventoPendiente)}
+
+      <button class="primary" onclick="guardarConPermiso()">
+        Confirmar y guardar
+      </button>
+
+      <button class="secondary" onclick="cancelar()">
+        Cancelar
+      </button>
+    </div>
+  `;
+}
+
+async function guardarConPermiso(){
+  if(!eventoPendiente) return;
+
+  const agenda = obtenerAgenda();
+  agenda.push({...eventoPendiente});
+  agenda.sort((a,b) =>
+    `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`)
+  );
+
+  guardarAgenda(agenda);
+
+  if("Notification" in window && Notification.permission === "default"){
+    try{
+      await Notification.requestPermission();
+    }catch{}
+  }
+
+  const guardado = {...eventoPendiente};
+  eventoPendiente = null;
+
+  document.getElementById("resultado").innerHTML = `
+    <div class="c success">
+      <b>✓ Listo, lo guardé</b>
+      <div style="margin-top:12px">
+        ${detalleEvento(guardado)}
+      </div>
+
+      <button class="secondary" onclick="probarAviso(${guardado.id})">
+        Probar ahora cómo será el aviso
+      </button>
+
+      <button class="primary" onclick="abrirAgenda()">
+        Ver en mi agenda
+      </button>
+    </div>
+  `;
+
+  renderAgenda();
+  actualizarProximo();
+}
+
+function cancelar(){
+  eventoPendiente = null;
+  eventosPendientes = [];
+  conversacionPendiente = null;
+
+  document.getElementById("resultado").innerHTML = `
+    <div class="c">
+      <b>No hice ningún cambio.</b>
+      <div class="small">La agenda quedó como estaba.</div>
+    </div>
+  `;
+}
+
+function mensajeAviso(evento){
+  return `${evento.icono} ${evento.titulo} es el ${fechaBonita(evento.fecha)} a las ${evento.hora}. Atlas te avisa ${evento.motivoAviso}.`;
+}
+
+function mostrarAviso(evento){
+  const titulo = `${evento.icono} Recordatorio de Atlas`;
+  const mensaje = mensajeAviso(evento);
+
+  document.getElementById("noticeTitle").innerText = titulo;
+  document.getElementById("noticeText").innerText = mensaje;
+
+  const aviso = document.getElementById("notice");
+  aviso.classList.add("show");
+
+  setTimeout(() => aviso.classList.remove("show"),7000);
+
+  if("Notification" in window && Notification.permission === "granted"){
+    try{
+      new Notification(titulo,{
+        body:mensaje,
+        tag:`atlas-${evento.id}`
+      });
+    }catch{}
+  }
+}
+
+function probarAviso(id){
+  const evento = obtenerAgenda().find(x => x.id === id);
+  if(evento) mostrarAviso(evento);
+}
+
+function inicioSemana(fecha){
+  const base = fechaDesdeISO(fecha);
+  const diferencia = (base.getDay()+6)%7;
+  return sumarDias(base,-diferencia);
+}
+
+function cambiarVistaAgenda(vista){
+  vistaAgenda = vista;
+  document.querySelectorAll(".agenda-tabs button").forEach(x => x.classList.remove("selected"));
+  document.getElementById(`vista${vista.charAt(0).toUpperCase()+vista.slice(1)}`).classList.add("selected");
+  renderAgenda();
+}
+
+function seleccionarDiaAgenda(fecha){
+  fechaAgenda = fecha;
+  renderAgenda();
+}
+
+function moverAgenda(direccion){
+  const salto = vistaAgenda === "semana" ? 7 : 1;
+  fechaAgenda = fechaLocalISO(sumarDias(fechaDesdeISO(fechaAgenda),direccion*salto));
+  renderAgenda();
+}
+
+function irHoyAgenda(){
+  fechaAgenda = fechaLocalISO(new Date());
+  renderAgenda();
+}
+
+function tarjetaAgenda(evento){
+  return `<div class="c">${detalleEvento(evento)}<button class="secondary" onclick="probarAviso(${evento.id})">Probar aviso</button></div>`;
+}
+
+function controlesAgenda(agenda){
+  const controles = document.getElementById("agendaControles");
+  if(vistaAgenda === "lista"){
+    controles.innerHTML = "";
+    return;
+  }
+  const seleccionada = fechaDesdeISO(fechaAgenda);
+  const referencia = vistaAgenda === "semana" ? inicioSemana(fechaAgenda) : seleccionada;
+  const titulo = vistaAgenda === "semana"
+    ? `${referencia.toLocaleDateString("es-AR",{day:"numeric",month:"short"})} – ${sumarDias(referencia,6).toLocaleDateString("es-AR",{day:"numeric",month:"short"})}`
+    : mayuscula(seleccionada.toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"}));
+  let tira = "";
+  if(vistaAgenda === "semana"){
+    tira = `<div class="week-strip">${Array.from({length:7},(_,i) => {
+      const dia = sumarDias(referencia,i);
+      const iso = fechaLocalISO(dia);
+      const cantidad = agenda.filter(x => x.fecha === iso).length;
+      return `<button class="day-chip ${iso === fechaAgenda ? "selected" : ""}" onclick="seleccionarDiaAgenda('${iso}')"><div class="dow">${dia.toLocaleDateString("es-AR",{weekday:"short"}).replace(".","")}</div><div class="num">${dia.getDate()}</div><div class="dot">${cantidad ? `● ${cantidad}` : ""}</div></button>`;
+    }).join("")}</div>`;
+  }
+  controles.innerHTML = `<div class="agenda-nav"><button onclick="moverAgenda(-1)">‹</button><button onclick="irHoyAgenda()">Hoy</button><div class="periodo">${titulo}</div><button onclick="moverAgenda(1)">›</button></div>${tira}`;
+}
+
+function revisarAvisos(){
+  const ahora = new Date();
+
+  obtenerAgenda().forEach(evento => {
+    if(evento.avisoMostrado) return;
+
+    const [h,m] = evento.hora.split(":").map(Number);
+    const fechaEvento = fechaDesdeISO(evento.fecha);
+    fechaEvento.setHours(h,m,0,0);
+
+    const fechaAviso = new Date(
+      fechaEvento.getTime()-evento.avisoMinutos*60000
+    );
+
+    if(ahora >= fechaAviso && ahora < fechaEvento){
+      mostrarAviso(evento);
+
+      const agenda = obtenerAgenda().map(item =>
+        item.id === evento.id
+          ? {...item,avisoMostrado:true}
+          : item
+      );
+
+      guardarAgenda(agenda);
+    }
+  });
+}
+
+function renderAgenda(){
+  const contenedor = document.getElementById("agendaLista");
+  const agenda = obtenerAgenda().sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  controlesAgenda(agenda);
+
+  if(agenda.length === 0){
+    contenedor.innerHTML = `
+      <div class="empty">
+        Todavía no hay eventos.<br>
+        Hablale a Kai para crear el primero.
+      </div>
+    `;
+    return;
+  }
+
+  if(vistaAgenda === "lista"){
+    const hoy = fechaLocalISO(new Date());
+    const proximos = agenda.filter(x => x.fecha >= hoy);
+    const anteriores = agenda.filter(x => x.fecha < hoy);
+    contenedor.innerHTML = `${proximos.length ? proximos.map(tarjetaAgenda).join("") : '<div class="empty">No hay eventos próximos.</div>'}${anteriores.length ? `<details class="past-events"><summary>Ver ${anteriores.length} eventos anteriores</summary>${anteriores.map(tarjetaAgenda).join("")}</details>` : ""}`;
+    return;
+  }
+
+  const delDia = agenda.filter(x => x.fecha === fechaAgenda);
+  contenedor.innerHTML = `<h3 class="agenda-heading">${mayuscula(fechaBonita(fechaAgenda))} · ${delDia.length} ${delDia.length === 1 ? "evento" : "eventos"}</h3>${delDia.length ? delDia.map(tarjetaAgenda).join("") : '<div class="empty">Este día está libre.</div>'}`;
+}
+
+function actualizarProximo(){
+  const ahora = new Date();
+
+  const proximos = obtenerAgenda()
+    .map(evento => {
+      const [h,m] = evento.hora.split(":").map(Number);
+      const fecha = fechaDesdeISO(evento.fecha);
+      fecha.setHours(h,m,0,0);
+      return {...evento,momento:fecha};
+    })
+    .filter(evento => evento.momento >= ahora)
+    .sort((a,b) => a.momento-b.momento);
+
+  const caja = document.getElementById("proximoEvento");
+
+  if(proximos.length === 0){
+    caja.innerHTML = `
+      📅 <b>Próximo</b><br>
+      <span class="small">Todavía no hay eventos próximos.</span>
+    `;
+    return;
+  }
+
+  const evento = proximos[0];
+
+  caja.innerHTML = `
+    📅 <b>Próximo</b><br>
+    ${evento.icono} ${escapar(evento.titulo)}<br>
+    <span class="small">
+      ${mayuscula(fechaBonita(evento.fecha))} · ${evento.hora}
+    </span>
+  `;
+}
+
+function abrirAgenda(){
+  s("g","ng");
+}
+
+function reiniciarPrueba(){
+  const confirmar = confirm(
+    "¿Querés borrar los eventos creados durante la prueba y volver a la agenda inicial?"
+  );
+
+  if(!confirmar) return;
+
+  localStorage.removeItem(STORAGE_KEY);
+  inicializarAgenda();
+  renderAgenda();
+  actualizarProximo();
+}
+
+inicializarAgenda();
+renderAgenda();
+actualizarProximo();
+revisarAvisos();
+setInterval(revisarAvisos,15000);
+</script>
+
+</body>
+</html>
