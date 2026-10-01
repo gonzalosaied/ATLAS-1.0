@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.7 — Vos hablá</title>
+<title>Atlas v0.8 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -259,7 +259,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.7</div>
+    <div class="version">Atlas v0.8</div>
   </div>
 
   <div class="c">
@@ -347,7 +347,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.7 — interpretación reforzada y agenda por día, semana o lista.
+      Atlas v0.8 — fechas validadas, conversaciones con contexto y mejor interpretación múltiple.
     </span>
   </div>
 </section>
@@ -361,8 +361,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v07";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v08";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -381,7 +381,10 @@ function s(id, navId){
 
   document.getElementById(navId).classList.add("active");
 
-  if(id === "g") renderAgenda();
+  if(id === "g"){
+    fechaAgenda = fechaLocalISO(new Date());
+    renderAgenda();
+  }
 }
 
 function escapar(texto){
@@ -421,6 +424,12 @@ function sumarDias(fecha, cantidad){
   const nueva = new Date(fecha);
   nueva.setDate(nueva.getDate()+cantidad);
   return nueva;
+}
+
+function crearFechaValidada(anio,mes,dia){
+  const fecha = new Date(anio,mes,dia);
+  if(fecha.getFullYear() !== anio || fecha.getMonth() !== mes || fecha.getDate() !== dia) return null;
+  return fecha;
 }
 
 function obtenerAgenda(){
@@ -656,15 +665,22 @@ function extraerFecha(textoNormalizado, hora){
 
     if(anio < 100) anio += 2000;
 
-    const fecha = new Date(anio,mes,dia);
-    return fechaLocalISO(fecha);
+    let fecha = crearFechaValidada(anio,mes,dia);
+    if(!fecha) return null;
+    if(!fechaNumerica[3] && fecha < hoy) fecha = crearFechaValidada(anio+1,mes,dia);
+    return fecha ? fechaLocalISO(fecha) : null;
   }
 
   const meses = {enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11};
   const fechaEscrita = textoNormalizado.match(/(?:el\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?/);
   if(fechaEscrita){
-    const fecha = new Date(Number(fechaEscrita[3] || hoy.getFullYear()),meses[fechaEscrita[2]],Number(fechaEscrita[1]));
-    return fechaLocalISO(fecha);
+    let anio = Number(fechaEscrita[3] || hoy.getFullYear());
+    const mes = meses[fechaEscrita[2]];
+    const dia = Number(fechaEscrita[1]);
+    let fecha = crearFechaValidada(anio,mes,dia);
+    if(!fecha) return null;
+    if(!fechaEscrita[3] && fecha < hoy) fecha = crearFechaValidada(anio+1,mes,dia);
+    return fecha ? fechaLocalISO(fecha) : null;
   }
 
   const dias = {
@@ -764,6 +780,11 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
     return {titulo:"Hacer compras en el supermercado",icono:"🛒",duracion:60,motivoAviso:"para que puedas organizarte"};
   }
 
+  if(/\b(llamar|llamo|llamada|telefonear)\b/.test(textoNormalizado)){
+    const persona = textoOriginal.match(/(?:llamar|llamo|llamada\s+a|telefonear)\s+(?:a\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,2}?)(?=\s+(?:hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|por|el)\b|[.,;]|$)/i);
+    return {titulo:persona ? `Llamar a ${persona[1]}` : "Hacer una llamada",icono:"📞",duracion:30,motivoAviso:"para que puedas comunicarte con tiempo"};
+  }
+
   if(/\b(pedido|entrega|entregar)\b/.test(textoNormalizado)){
     return {titulo:"Entregar un pedido",icono:"📦",duracion:60,motivoAviso:"para que puedas prepararlo y llegar con tiempo"};
   }
@@ -806,6 +827,7 @@ function interpretar(texto){
   const horasDetectadas = extraerHoras(limpio);
   const hora = horasDetectadas[0]?.hora || null;
   const fecha = extraerFecha(limpio,hora);
+  const mencionaFechaExacta = /(?:\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?|\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre))/.test(limpio);
   const actividad = datosSegunActividad(limpio,texto);
   const duracionExplicita = extraerDuracion(limpio);
 
@@ -822,6 +844,7 @@ function interpretar(texto){
     titulo:actividad.titulo,
     icono:actividad.icono,
     fecha,
+    fechaInvalida:Boolean(mencionaFechaExacta && !fecha),
     hora,
     horaAmbigua:Boolean(hora && !horasDetectadas[0]?.periodo && Number(hora.split(":")[0]) > 0 && Number(hora.split(":")[0]) < 8),
     duracion,
@@ -879,15 +902,27 @@ function interpretarMultiples(texto){
   if(marcadores.length < 2) return [];
   const fechaGeneral = extraerFecha(limpio,extraerHora(limpio));
   const periodo = limpio.match(/de\s+la\s+(tarde|noche|manana|madrugada)/)?.[1] || "";
-  const prefijo = texto.slice(0,marcadores[0].index);
+  const horas = extraerHoras(limpio);
+  const usadas = new Set();
+  const mencionesFecha = [...limpio.matchAll(/pasado\s+manana|manana|hoy|(?:el\s+|este\s+|esta\s+)?(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)|(?:el\s+)?\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?|(?:el\s+)?\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+\d{4})?/g)]
+    .map(x => ({index:x.index,fecha:extraerFecha(x[0],null)}));
   const eventos = marcadores.map((marca,index) => {
-    const inicio = marca.index;
-    const fin = marcadores[index+1]?.index ?? texto.length;
-    let ampliada = `${prefijo} ${texto.slice(inicio,fin)}`.replace(/\s+y\s*$/i,"").trim();
-    if(periodo && !/de\s+la\s+(tarde|noche|manana|madrugada)/i.test(ampliada)) ampliada += ` de la ${periodo}`;
+    const fechaCercana = [...mencionesFecha].reverse().find(x => x.index <= marca.index)?.fecha || fechaGeneral;
+    let mejorHora = horas.length === marcadores.length ? {h:horas[index],i:index} : null;
+    let mejorDistancia = mejorHora ? Math.abs(mejorHora.h.index-marca.index) : Infinity;
+    if(!mejorHora) horas.forEach((h,i) => {
+      if(usadas.has(i)) return;
+      const distancia = Math.abs(h.index-marca.index);
+      if(distancia < mejorDistancia){ mejorDistancia = distancia; mejorHora = {h,i}; }
+    });
+    if(mejorHora) usadas.add(mejorHora.i);
+    let ampliada = `${marca[0]} ${fechaCercana || ""} ${mejorHora?.h.hora || ""}`.trim();
+    if(periodo && mejorHora && !mejorHora.h.periodo) ampliada += ` de la ${periodo}`;
     const evento = interpretar(ampliada);
     evento.accion = "crear";
-    evento.fecha = evento.fecha || fechaGeneral;
+    evento.fecha = fechaCercana || evento.fecha || fechaGeneral;
+    evento.hora = mejorHora?.h.hora || evento.hora;
+    evento.horaAmbigua = Boolean(evento.hora && !mejorHora?.h.periodo && !periodo && Number(evento.hora.split(":")[0]) > 0 && Number(evento.hora.split(":")[0]) < 8);
     evento.id = Date.now()+index;
     return evento;
   }).filter(x => x.hora);
@@ -924,12 +959,13 @@ function buscarConflictos(evento){
 
 function fechaBonita(iso){
   const fecha = fechaDesdeISO(iso);
-
-  return fecha.toLocaleDateString("es-AR",{
+  const opciones = {
     weekday:"long",
     day:"numeric",
     month:"long"
-  });
+  };
+  if(fecha.getFullYear() !== new Date().getFullYear()) opciones.year = "numeric";
+  return fecha.toLocaleDateString("es-AR",opciones);
 }
 
 function mayuscula(texto){
@@ -1048,6 +1084,11 @@ function ordenar(){
 function procesarCreacion(evento){
   const resultado = document.getElementById("resultado");
 
+  if(evento.fechaInvalida){
+    resultado.innerHTML = `<div class="c warn"><b>La fecha indicada no existe.</b><p>Revisala y decímela nuevamente. No guardé ningún evento.</p></div>`;
+    return;
+  }
+
   if(!evento.fecha && !evento.hora){
     conversacionPendiente = {tipo:"completar",evento,falta:"fecha y hora"};
     resultado.innerHTML = `
@@ -1074,7 +1115,8 @@ function procesarCreacion(evento){
   }
 
   if(!evento.hora){
-    conversacionPendiente = {tipo:"completar",evento,falta:"hora"};
+    const periodoPreferido = normalizar(evento.textoOriginal || "").match(/(?:por|de)\s+la\s+(manana|tarde|noche|madrugada)/)?.[1] || "";
+    conversacionPendiente = {tipo:"completar",evento,falta:"hora",periodoPreferido};
     resultado.innerHTML = `
       <div class="c info">
         <b>¿A qué hora sería?</b>
@@ -1192,6 +1234,11 @@ function completarConversacion(respuesta){
     duracion:complemento.duracionExplicita ? complemento.duracion : pendiente.evento.duracion,
     duracionExplicita:complemento.duracionExplicita || pendiente.evento.duracionExplicita
   };
+  if(pendiente.periodoPreferido && complemento.hora){
+    const [h,m] = complemento.hora.split(":").map(Number);
+    evento.hora = convertirHora(h,m,pendiente.periodoPreferido);
+    evento.horaAmbigua = false;
+  }
   procesarCreacion(evento);
 }
 
