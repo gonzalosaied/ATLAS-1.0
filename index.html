@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.5 — Vos hablá</title>
+<title>Atlas v0.6 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -245,7 +245,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.5</div>
+    <div class="version">Atlas v0.6</div>
   </div>
 
   <div class="c">
@@ -326,7 +326,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.5 — conversación controlada, múltiples eventos, recurrencias y agenda inteligente.
+      Atlas v0.6 — núcleo reforzado para interpretar, validar y confirmar antes de actuar.
     </span>
   </div>
 </section>
@@ -340,8 +340,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v05";
-const OLD_STORAGE_KEY = "atlas_agenda_v04";
+const STORAGE_KEY = "atlas_agenda_v06";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -425,10 +425,12 @@ function proximoDiaSemana(indice){
 function inicializarAgenda(){
   if(localStorage.getItem(STORAGE_KEY) !== null) return;
 
-  const agendaAnterior = localStorage.getItem(OLD_STORAGE_KEY);
-  if(agendaAnterior){
-    localStorage.setItem(STORAGE_KEY,agendaAnterior);
-    return;
+  for(const claveAnterior of OLD_STORAGE_KEYS){
+    const agendaAnterior = localStorage.getItem(claveAnterior);
+    if(agendaAnterior){
+      localStorage.setItem(STORAGE_KEY,agendaAnterior);
+      return;
+    }
   }
 
   const miercoles = proximoDiaSemana(3);
@@ -806,7 +808,9 @@ function generarRecurrencia(evento){
   if((!(/\b(todos|cada)\b/.test(limpio)) && dias.length < 2) || !dias.length || !evento.hora) return [];
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const hasta = new Date(hoy);
+  const inicioSerie = evento.fecha ? fechaDesdeISO(evento.fecha) : new Date(hoy);
+  inicioSerie.setHours(0,0,0,0);
+  const hasta = new Date(inicioSerie);
   const meses = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|un|uno|dos|tres|cuatro|seis)\s+mes/);
   const semanas = limpio.match(/(?:durante|hasta\s+dentro\s+de?)\s+(\d+|una|uno|dos|tres|cuatro|seis)\s+semana/);
   if(meses){
@@ -823,7 +827,7 @@ function generarRecurrencia(evento){
 
   const grupo = `rec-${Date.now()}`;
   const serie = [];
-  for(let fecha = new Date(hoy); fecha <= hasta; fecha = sumarDias(fecha,1)){
+  for(let fecha = new Date(inicioSerie); fecha <= hasta; fecha = sumarDias(fecha,1)){
     if(dias.includes(fecha.getDay())){
       serie.push({...evento,id:Date.now()+serie.length,fecha:fechaLocalISO(fecha),grupoRecurrencia:grupo});
     }
@@ -1165,11 +1169,17 @@ function confirmarComoCreacion(){
 function coincideActividad(evento,filtro){
   const a = normalizar(evento.titulo);
   const b = normalizar(filtro.titulo);
-  const generico = b === normalizar(filtro.textoOriginal).slice(0,60);
+  const original = normalizar(filtro.textoOriginal || "");
+  const generico = b === original.slice(0,60);
+
+  // Cuando se menciona una persona, la coincidencia debe ser exacta.
+  // Así “Reunión con Fernando” no selecciona reuniones con otras personas.
+  if(/^reunion con .+/.test(b)) return a === b;
+  if(b === "reunion") return a === "reunion" || a.startsWith("reunion con ");
+
   return generico || a.includes(b) || b.includes(a) ||
     (a.includes("futbol") && b.includes("futbol")) ||
-    (a.includes("gimnasio") && /gimnasio|gym/.test(b)) ||
-    (a.includes("reunion") && b.includes("reunion"));
+    (a.includes("gimnasio") && /gimnasio|gym/.test(b));
 }
 
 function consultarAgenda(filtro){
