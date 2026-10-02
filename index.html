@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v0.8 — Vos hablá</title>
+<title>Atlas v0.9 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -187,6 +187,14 @@ button{cursor:pointer}
   margin-bottom:4px;
 }
 
+.event-status{display:inline-block;margin:0 0 7px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.02em}
+.status-upcoming{background:#2563eb33;color:#93c5fd}
+.status-active{background:#16a34a33;color:#86efac}
+.status-finished{background:#47556955;color:#94a3b8}
+.event-card.finished{opacity:.64}
+.finished-events{margin-top:12px}
+.finished-events summary{cursor:pointer;color:#94a3b8;padding:12px 2px;font-weight:700}
+
 .empty{
   text-align:center;
   padding:25px 12px;
@@ -259,7 +267,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v0.8</div>
+    <div class="version">Atlas v0.9</div>
   </div>
 
   <div class="c">
@@ -347,7 +355,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v0.8 — fechas validadas, conversaciones con contexto y mejor interpretación múltiple.
+      Atlas v0.9 — fechas relativas, títulos limpios y agenda con estados en tiempo real.
     </span>
   </div>
 </section>
@@ -361,8 +369,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v08";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v09";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -577,6 +585,12 @@ function convertirHora(hora,minuto,periodo){
 function extraerHoras(textoNormalizado){
   const resultados = [];
   const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const horaNueva = new RegExp(`\\b(?:nueva\\s+hora|nuevo\\s+horario)\\s*:?\\s*(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\b`,"g");
+  let horaNuevaMatch;
+  while((horaNuevaMatch = horaNueva.exec(textoNormalizado))){
+    const hora = convertirHora(NUMEROS[horaNuevaMatch[1]] ?? Number(horaNuevaMatch[1]),Number(horaNuevaMatch[2] || 0),"");
+    if(hora) resultados.push({hora,index:horaNuevaMatch.index,texto:horaNuevaMatch[0],periodo:""});
+  }
   const rango = new RegExp(`\\b(?:de|desde)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\s+(?:a|hasta)\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?\\b`,"g");
   let rangoMatch;
   while((rangoMatch = rango.exec(textoNormalizado))){
@@ -697,7 +711,11 @@ function extraerFecha(textoNormalizado, hora){
     if(textoNormalizado.includes(nombre)){
       let diferencia = (indice-hoy.getDay()+7)%7;
 
-      if(diferencia === 0){
+      const esProximoDia = new RegExp(`\\bproximo\\s+${nombre}\\b`).test(textoNormalizado);
+      const esSemanaQueViene = /\b(?:la\s+)?semana\s+que\s+viene\b/.test(textoNormalizado);
+      if(esProximoDia || esSemanaQueViene) diferencia += 7;
+
+      if(diferencia === 0 && !esProximoDia && !esSemanaQueViene){
         const ahora = new Date();
         const [h,m] = (hora || "23:59").split(":").map(Number);
         const momento = new Date(hoy);
@@ -752,7 +770,7 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
+    const persona = textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
     if(persona) titulo = `Reunión con ${persona[1]}`;
 
     return {
@@ -807,8 +825,18 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
     };
   }
 
+  let tituloGenerico = textoOriginal.trim()
+    .replace(/^(?:agendame|agendá|agenda|anotame|anotá|programame|programá|creame|creá)\s+/i,"")
+    .replace(/\s+\b(?:todos?|cada)\b[\s\S]*$/i,"")
+    .replace(/\s+\b(?:hoy|mañana|pasado mañana|el próximo|este|esta)\b[\s\S]*$/i,"")
+    .replace(/\s+\ba\s+las?\s+\d[\s\S]*$/i,"")
+    .replace(/[.,;]+$/g,"")
+    .trim();
+  if(!tituloGenerico) tituloGenerico = "Actividad";
+  tituloGenerico = mayuscula(tituloGenerico.slice(0,60));
+
   return {
-    titulo:textoOriginal.trim().slice(0,60),
+    titulo:tituloGenerico,
     icono:"📌",
     duracion:60,
     motivoAviso:"para que puedas organizarte con tiempo"
@@ -972,12 +1000,29 @@ function mayuscula(texto){
   return texto.charAt(0).toUpperCase()+texto.slice(1);
 }
 
+function momentoEvento(evento,fin=false){
+  const fecha = fechaDesdeISO(evento.fecha);
+  const minutosEvento = minutos(evento.hora)+(fin ? evento.duracion : 0);
+  fecha.setHours(Math.floor(minutosEvento/60),minutosEvento%60,0,0);
+  return fecha;
+}
+
+function estadoEvento(evento,ahora=new Date()){
+  const inicio = momentoEvento(evento);
+  const fin = momentoEvento(evento,true);
+  if(ahora >= fin) return {clave:"finished",texto:"Finalizado"};
+  if(ahora >= inicio) return {clave:"active",texto:"En curso"};
+  return {clave:"upcoming",texto:"Próximo"};
+}
+
 function detalleEvento(evento){
   const fin = evento.hora ? aHora(minutos(evento.hora)+evento.duracion) : "";
+  const estado = estadoEvento(evento);
   return `
     <div class="event-row">
       <div class="event-icon">${evento.icono}</div>
       <div class="event-data">
+        <div class="event-status status-${estado.clave}">${estado.texto}</div>
         <div class="event-title">${escapar(evento.titulo)}</div>
         <div>${mayuscula(fechaBonita(evento.fecha))} · ${evento.hora}–${fin}</div>
         ${evento.motivo ? `<div class="small"><b>Motivo:</b> ${escapar(evento.motivo)}</div>` : ""}
@@ -1367,7 +1412,8 @@ function prepararEliminacion(pedido){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré ese evento.</b><div class="small">No eliminé nada.</div></div>`;
     return;
   }
-  if(candidatos.length > 1){
+  const pedidoGenerico = !pedido.fecha && !pedido.hora && /^(?:gimnasio|futbol|reunion|turno|actividad|natacion)$/.test(normalizar(pedido.titulo));
+  if(candidatos.length > 1 || pedidoGenerico){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento que coincide.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime el día o el horario para identificar cuál querés eliminar.</p><div class="small">No eliminé nada.</div></div>`;
     return;
   }
@@ -1617,7 +1663,14 @@ function irHoyAgenda(){
 }
 
 function tarjetaAgenda(evento){
-  return `<div class="c">${detalleEvento(evento)}<button class="secondary" onclick="probarAviso(${evento.id})">Probar aviso</button></div>`;
+  const estado = estadoEvento(evento);
+  return `<div class="c event-card ${estado.clave}">${detalleEvento(evento)}${estado.clave !== "finished" ? `<button class="secondary" onclick="probarAviso(${evento.id})">Probar aviso</button>` : ""}</div>`;
+}
+
+function agendaSeparada(eventos){
+  const finalizados = eventos.filter(x => estadoEvento(x).clave === "finished");
+  const vigentes = eventos.filter(x => estadoEvento(x).clave !== "finished");
+  return `${vigentes.length ? vigentes.map(tarjetaAgenda).join("") : (finalizados.length ? '<div class="empty">No quedan actividades pendientes.</div>' : "")}${finalizados.length ? `<details class="finished-events"><summary>Ver ${finalizados.length} ${finalizados.length === 1 ? "evento finalizado" : "eventos finalizados"}</summary>${finalizados.map(tarjetaAgenda).join("")}</details>` : ""}`;
 }
 
 function controlesAgenda(agenda){
@@ -1687,15 +1740,12 @@ function renderAgenda(){
   }
 
   if(vistaAgenda === "lista"){
-    const hoy = fechaLocalISO(new Date());
-    const proximos = agenda.filter(x => x.fecha >= hoy);
-    const anteriores = agenda.filter(x => x.fecha < hoy);
-    contenedor.innerHTML = `${proximos.length ? proximos.map(tarjetaAgenda).join("") : '<div class="empty">No hay eventos próximos.</div>'}${anteriores.length ? `<details class="past-events"><summary>Ver ${anteriores.length} eventos anteriores</summary>${anteriores.map(tarjetaAgenda).join("")}</details>` : ""}`;
+    contenedor.innerHTML = agendaSeparada(agenda);
     return;
   }
 
   const delDia = agenda.filter(x => x.fecha === fechaAgenda);
-  contenedor.innerHTML = `<h3 class="agenda-heading">${mayuscula(fechaBonita(fechaAgenda))} · ${delDia.length} ${delDia.length === 1 ? "evento" : "eventos"}</h3>${delDia.length ? delDia.map(tarjetaAgenda).join("") : '<div class="empty">Este día está libre.</div>'}`;
+  contenedor.innerHTML = `<h3 class="agenda-heading">${mayuscula(fechaBonita(fechaAgenda))} · ${delDia.length} ${delDia.length === 1 ? "evento" : "eventos"}</h3>${delDia.length ? agendaSeparada(delDia) : '<div class="empty">Este día está libre.</div>'}`;
 }
 
 function actualizarProximo(){
