@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.0 — Vos hablá</title>
+<title>Atlas v1.1 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -267,7 +267,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.0</div>
+    <div class="version">Atlas v1.1</div>
   </div>
 
   <div class="c">
@@ -355,7 +355,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.0 — entiende, valida y pide permiso antes de cambiar tu agenda.
+      Atlas v1.1 — entiende, valida y pide permiso antes de cambiar tu agenda.
     </span>
   </div>
 </section>
@@ -369,8 +369,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v10";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v11";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -670,22 +670,24 @@ function extraerFecha(textoNormalizado, hora){
   const hoy = new Date();
   hoy.setHours(0,0,0,0);
 
+  const dentroDias = textoNormalizado.match(/\bdentro\s+de\s+(\d+|un|uno|dos|tres|cuatro|cinco|seis|siete)\s+dias?\b/);
+  if(dentroDias){
+    const cantidad = NUMEROS[dentroDias[1]] ?? Number(dentroDias[1]);
+    return fechaLocalISO(sumarDias(hoy,cantidad));
+  }
+
   if(textoNormalizado.includes("pasado manana")){
     return fechaLocalISO(sumarDias(hoy,2));
   }
 
-  if(textoNormalizado.includes("manana")){
+  // “de la mañana” describe el período horario; no significa “mañana”.
+  const textoFecha = textoNormalizado.replace(/\b(?:de|por)\s+la\s+manana\b/g,"");
+  if(/\bmanana\b/.test(textoFecha)){
     return fechaLocalISO(sumarDias(hoy,1));
   }
 
   if(textoNormalizado.includes("hoy")){
     return fechaLocalISO(hoy);
-  }
-
-  const dentroDias = textoNormalizado.match(/\bdentro\s+de\s+(\d+|un|uno|dos|tres|cuatro|cinco|seis|siete)\s+dias?\b/);
-  if(dentroDias){
-    const cantidad = NUMEROS[dentroDias[1]] ?? Number(dentroDias[1]);
-    return fechaLocalISO(sumarDias(hoy,cantidad));
   }
 
   const fechaNumerica = textoNormalizado.match(
@@ -823,6 +825,11 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
 
   if(/supermercado|compras/.test(textoNormalizado)){
     return {titulo:"Hacer compras en el supermercado",icono:"🛒",duracion:60,motivoAviso:"para que puedas organizarte"};
+  }
+
+  if(/\bvideollamada\b/.test(textoNormalizado)){
+    const persona = textoOriginal.match(/videollamada\s+(?:(?:a|con)\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,2}?)(?=\s+(?:hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|por|el|durante)\b|[.,;]|$)/i);
+    return {titulo:persona ? `Videollamada con ${persona[1]}` : "Videollamada",icono:"📹",duracion:30,motivoAviso:"para que puedas conectarte con tiempo"};
   }
 
   if(/\b(llamar|llamo|llamada|telefonear)\b/.test(textoNormalizado)){
@@ -1040,6 +1047,10 @@ function momentoEvento(evento,fin=false){
   return fecha;
 }
 
+function esEventoPasado(evento,ahora=new Date()){
+  return Boolean(evento?.fecha && evento?.hora && momentoEvento(evento) < ahora);
+}
+
 function estadoEvento(evento,ahora=new Date()){
   const inicio = momentoEvento(evento);
   const fin = momentoEvento(evento,true);
@@ -1084,7 +1095,14 @@ function esRespuestaAlPendiente(texto,pendiente){
 }
 
 function botonesConversacion(){
-  return `<button class="secondary" onclick="escuchar()">🎙️ Responder ahora</button><button class="secondary" onclick="cancelar()">Cancelar esta conversación</button>`;
+  return `<button class="secondary" onclick="prepararRespuesta()">✍️ Responder ahora</button><button class="secondary" onclick="cancelar()">Cancelar esta conversación</button>`;
+}
+
+function prepararRespuesta(){
+  const entrada = document.getElementById("entrada");
+  entrada.value = "";
+  entrada.focus();
+  entrada.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
 function ordenar(){
@@ -1115,7 +1133,7 @@ function ordenar(){
   eventoPendiente = null;
   eventosPendientes = [];
   const accionGeneral = clasificarIntencion(normalizar(texto));
-  if(accionGeneral === "crear" || accionGeneral === "informar"){
+  if(!["consultar","disponibilidad","modificar","eliminar","clima"].includes(accionGeneral)){
     const multiples = interpretarMultiples(texto);
     if(multiples.length > 1){
       mostrarMultiples(multiples);
@@ -1216,6 +1234,12 @@ function procesarCreacion(evento){
     return;
   }
 
+  if(esEventoPasado(evento)){
+    conversacionPendiente = {tipo:"reprogramarPasado",evento};
+    resultado.innerHTML = `<div class="c warn"><b>Ese horario ya pasó.</b><p>${detalleEvento(evento)}</p><p>¿Quisiste decir otro día u otra hora?</p><div class="small">No guardé nada.</div>${botonesConversacion()}</div>`;
+    return;
+  }
+
   const serie = generarRecurrencia(evento);
   if(serie.length){
     mostrarRecurrencia(serie);
@@ -1287,6 +1311,17 @@ function completarConversacion(respuesta){
   const pendiente = conversacionPendiente;
   conversacionPendiente = null;
   const complemento = interpretar(respuesta);
+  const respuestaNormalizada = normalizar(respuesta);
+  const horasRespuesta = extraerHoras(respuestaNormalizada);
+  if(!complemento.hora && horasRespuesta.length){
+    complemento.hora = horasRespuesta[horasRespuesta.length-1].hora;
+  }
+
+  if(pendiente.tipo === "reprogramarPasado" && !complemento.fecha && !complemento.hora){
+    conversacionPendiente = pendiente;
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>Necesito un nuevo día o una nueva hora.</b><p>Por ejemplo: “mañana a las 9”.</p>${botonesConversacion()}</div>`;
+    return;
+  }
   if(pendiente.tipo === "periodo"){
     const r = normalizar(respuesta);
     if(!/\b(manana|tarde|noche|madrugada)\b/.test(r)){
@@ -1310,10 +1345,18 @@ function completarConversacion(respuesta){
     mostrarConfirmacionModificacion(pendiente.evento);
     return;
   }
+  const periodoRespuesta = respuestaNormalizada.match(/\b(?:a|por|de)\s+la\s+(manana|tarde|noche|madrugada)\b/)?.[1] || "";
+  if(!complemento.hora && periodoRespuesta){
+    conversacionPendiente = {...pendiente,periodoPreferido:periodoRespuesta};
+    const etiquetas = {manana:"mañana",tarde:"tarde",noche:"noche",madrugada:"madrugada"};
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué hora de la ${etiquetas[periodoRespuesta]}?</b><p>Conservé ${escapar(pendiente.evento.titulo)} para el ${fechaBonita(pendiente.evento.fecha)}.</p><div class="small">Decime solamente la hora; no voy a inventarla.</div>${botonesConversacion()}</div>`;
+    return;
+  }
+  const corregirActividad = complemento.icono !== "📌" && /\b(mejor|en realidad|quise decir|pero|videollamada|llamada|reunion)\b/.test(respuestaNormalizada);
   const evento = {
     ...pendiente.evento,
-    titulo:complemento.icono !== "📌" && /\b(mejor|en realidad|quise decir|videollamada|llamada|reunion)\b/.test(normalizar(respuesta)) ? complemento.titulo : pendiente.evento.titulo,
-    icono:complemento.icono !== "📌" && /\b(mejor|en realidad|quise decir|videollamada|llamada|reunion)\b/.test(normalizar(respuesta)) ? complemento.icono : pendiente.evento.icono,
+    titulo:corregirActividad ? complemento.titulo : pendiente.evento.titulo,
+    icono:corregirActividad ? complemento.icono : pendiente.evento.icono,
     fecha:complemento.fecha || pendiente.evento.fecha,
     hora:complemento.hora || pendiente.evento.hora,
     duracion:complemento.duracionExplicita ? complemento.duracion : pendiente.evento.duracion,
@@ -1531,9 +1574,11 @@ function mostrarRevision(){
     return;
   }
 
-  const conflicto = conflictos[0];
-  const inicioCruce = Math.max(minutos(eventoPendiente.hora),minutos(conflicto.hora));
-  const finCruce = Math.min(minutos(eventoPendiente.hora)+eventoPendiente.duracion,minutos(conflicto.hora)+conflicto.duracion);
+  const detalleConflictos = conflictos.map(conflicto => {
+    const inicioCruce = Math.max(minutos(eventoPendiente.hora),minutos(conflicto.hora));
+    const finCruce = Math.min(minutos(eventoPendiente.hora)+eventoPendiente.duracion,minutos(conflicto.hora)+conflicto.duracion);
+    return `<div style="margin-top:12px">${conflicto.icono} <b>${escapar(conflicto.titulo)}</b> · ${conflicto.hora}–${aHora(minutos(conflicto.hora)+conflicto.duracion)}<div class="small">El cruce ocurre entre las ${aHora(inicioCruce)} y las ${aHora(finCruce)}.</div></div>`;
+  }).join("");
   const antes = buscarHoraLibre(eventoPendiente,-1);
   const despues = buscarHoraLibre(eventoPendiente,1);
 
@@ -1548,8 +1593,8 @@ function mostrarRevision(){
     <div class="c warn">
       <b>⚠️ Hay un problema</b>
       <p><b>Tu propuesta:</b><br>${eventoPendiente.icono} ${escapar(eventoPendiente.titulo)} · ${eventoPendiente.hora}–${aHora(minutos(eventoPendiente.hora)+eventoPendiente.duracion)}</p>
-      <p><b>Se superpone con:</b><br>${conflicto.icono} ${escapar(conflicto.titulo)} · ${conflicto.hora}–${aHora(minutos(conflicto.hora)+conflicto.duracion)}</p>
-      <div class="small">El cruce ocurre entre las ${aHora(inicioCruce)} y las ${aHora(finCruce)}.</div>
+      <p><b>Se superpone con ${conflictos.length === 1 ? "este evento" : `estos ${conflictos.length} eventos`}:</b></p>
+      ${detalleConflictos}
 
       <div class="small">
         Elegí una opción. Atlas no va a cambiar ni guardar nada sin tu permiso.
