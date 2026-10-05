@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.2 — Vos hablá</title>
+<title>Atlas v1.3 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -267,6 +267,11 @@ hr{
 .past-events summary{cursor:pointer;color:#94a3b8;padding:12px 2px}
 .mic-help{display:none;margin-top:10px;padding:10px;border-radius:10px;background:#111827;border:1px solid #475569;text-align:left}
 .mic-help.show{display:block}
+.reminder-picker{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.reminder-picker button{width:auto;margin:0;padding:9px 11px;border:1px solid #475569;border-radius:999px;background:#111827;color:#cbd5e1;font-weight:700}
+.reminder-picker button.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
+.last-action{display:flex;gap:10px;align-items:center}
+.last-action .check{font-size:22px;color:#4ade80}
 </style>
 </head>
 
@@ -281,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.2</div>
+    <div class="version">Atlas v1.3</div>
   </div>
 
   <div class="c">
@@ -371,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.2 — conversación continua, mejor interpretación y resolución completa de conflictos.
+      Atlas v1.3 — títulos más limpios, fechas corregidas, conversación despejada y avisos múltiples.
     </span>
   </div>
 </section>
@@ -385,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v12";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v13";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -395,8 +400,11 @@ let reconocimiento = null;
 let escuchando = false;
 let vistaAgenda = "semana";
 let fechaAgenda = fechaLocalISO(new Date());
+let ultimaAccion = null;
 
 function s(id, navId){
+  const estabaEnKai = document.getElementById("k").classList.contains("a");
+  if(estabaEnKai && id !== "k" && ultimaAccion) compactarResultado();
   document.querySelectorAll(".p").forEach(x => x.classList.remove("a"));
   document.getElementById(id).classList.add("a");
 
@@ -776,7 +784,9 @@ function extraerFecha(textoNormalizado, hora){
 
       const esProximoDia = new RegExp(`\\bproximo\\s+${nombre}\\b`).test(textoNormalizado);
       const esSemanaQueViene = /\b(?:la\s+)?semana\s+que\s+viene\b/.test(textoNormalizado);
-      if(esProximoDia || esSemanaQueViene) diferencia += 7;
+      // “Próximo sábado” significa la próxima ocurrencia, no la de la semana siguiente.
+      // Solo “la semana que viene” desplaza explícitamente siete días adicionales.
+      if(esSemanaQueViene) diferencia += 7;
 
       if(diferencia === 0 && !esProximoDia && !esSemanaQueViene){
         const ahora = new Date();
@@ -834,8 +844,8 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/(?:reuni[oó]n|me\s+junto|juntarme)(?:\s+(?:de|del|el|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|\d{1,2}(?::\d{2})?)){0,6}\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i)
-      || textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i);
+    const persona = textoOriginal.match(/(?:reuni[oó]n|me\s+junto|juntarme)(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9:-]+){0,5}?\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i)
+      || textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|durante|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;]|$)/i);
     if(persona){
       const nombre = persona[1].replace(/\s+(?:de|del|y)$/i,"").trim();
       if(nombre) titulo = `Reunión con ${nombre}`;
@@ -899,10 +909,12 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
   }
 
   let tituloGenerico = textoOriginal.trim()
-    .replace(/^(?:agendame|agendá|agenda|anotame|anotá|programame|programá|creame|creá)\s+/i,"")
-    .replace(/\s+\b(?:todos?|cada)\b[\s\S]*$/i,"")
-    .replace(/\s+\b(?:hoy|mañana|pasado mañana|el próximo|este|esta)\b[\s\S]*$/i,"")
-    .replace(/\s+\ba\s+las?\s+\d[\s\S]*$/i,"")
+    .replace(/^[“”"'\s]+|[“”"'\s]+$/g,"")
+    .replace(/^(?:por\s+favor\s+)?(?:agendame|agéndame|agendá|agenda|anotame|anótame|anotá|programame|prográmame|programá|creame|créame|creá)\s+/i,"")
+    .replace(/\s+\b(?:todos?|cada|los\s+(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábados|sabados|domingos))\b[\s\S]*$/i,"")
+    .replace(/\s+\b(?:hoy|mañana|pasado mañana|el próximo|la próxima|este|esta)\b[\s\S]*$/i,"")
+    .replace(/\s+\b(?:a\s+las?|al)\s+(?:\d|mediodía|mediodia)[\s\S]*$/i,"")
+    .replace(/\s+\b(?:durante|por)\s+\d*[\s\S]*$/i,"")
     .replace(/[.,;]+$/g,"")
     .trim();
   if(!tituloGenerico) tituloGenerico = "Actividad";
@@ -952,6 +964,7 @@ function interpretar(texto){
     duracionExplicita:Boolean(duracionExplicita || (horasDetectadas.length > 1 && /\b(desde|de)\b/.test(limpio))),
     motivo:extraerMotivo(texto),
     avisoMinutos:60,
+    avisosMinutos:[60],
     motivoAviso:actividad.motivoAviso,
     textoOriginal:texto
   };
@@ -1101,6 +1114,7 @@ function estadoEvento(evento,ahora=new Date()){
 function detalleEvento(evento){
   const fin = evento.hora ? aHora(minutos(evento.hora)+evento.duracion) : "";
   const estado = estadoEvento(evento);
+  const avisos = normalizarAvisos(evento);
   return `
     <div class="event-row">
       <div class="event-icon">${evento.icono}</div>
@@ -1109,12 +1123,58 @@ function detalleEvento(evento){
         <div class="event-title">${escapar(evento.titulo)}</div>
         <div>${mayuscula(fechaBonita(evento.fecha))} · ${evento.hora}–${fin}</div>
         ${evento.motivo ? `<div class="small"><b>Motivo:</b> ${escapar(evento.motivo)}</div>` : ""}
-        <div class="small">
-          Aviso: 1 hora antes, ${escapar(evento.motivoAviso)}.
-        </div>
+        <div class="small">${textoAvisos(avisos)}, ${escapar(evento.motivoAviso)}.</div>
       </div>
     </div>
   `;
+}
+
+function normalizarAvisos(evento){
+  const valores = Array.isArray(evento?.avisosMinutos)
+    ? evento.avisosMinutos
+    : [Number(evento?.avisoMinutos ?? 60)];
+  return [...new Set(valores.map(Number).filter(x => Number.isFinite(x) && x >= 0))].sort((a,b) => b-a);
+}
+
+function etiquetaAviso(minutosAviso){
+  if(minutosAviso === 0) return "A la hora";
+  if(minutosAviso === 15) return "15 min antes";
+  if(minutosAviso === 60) return "1 hora antes";
+  if(minutosAviso === 120) return "2 horas antes";
+  if(minutosAviso === 1440) return "El día anterior";
+  return `${minutosAviso} min antes`;
+}
+
+function textoAvisos(avisos){
+  const etiquetas = avisos.map(etiquetaAviso);
+  if(!etiquetas.length) return "Sin avisos";
+  if(etiquetas.length === 1) return `Aviso: ${etiquetas[0]}`;
+  return `Avisos: ${etiquetas.slice(0,-1).join(", ")} y ${etiquetas.at(-1)}`;
+}
+
+function selectorAvisos(evento){
+  const seleccionados = normalizarAvisos(evento);
+  return `<div class="small" style="margin-top:12px"><b>¿Cuándo querés que te avise?</b> Podés elegir más de uno.</div><div class="reminder-picker">${[15,60,120,1440].map(valor => `<button type="button" class="${seleccionados.includes(valor) ? "selected" : ""}" onclick="toggleAviso(${valor})">${etiquetaAviso(valor)}</button>`).join("")}</div>`;
+}
+
+function toggleAviso(valor){
+  if(!eventoPendiente) return;
+  const avisos = normalizarAvisos(eventoPendiente);
+  eventoPendiente.avisosMinutos = avisos.includes(valor)
+    ? avisos.filter(x => x !== valor)
+    : [...avisos,valor].sort((a,b) => b-a);
+  eventoPendiente.avisoMinutos = eventoPendiente.avisosMinutos[0] ?? 60;
+  mostrarRevision();
+}
+
+function registrarAccionCompletada(resumen,html){
+  ultimaAccion = resumen;
+  document.getElementById("resultado").innerHTML = html;
+}
+
+function compactarResultado(){
+  if(!ultimaAccion) return;
+  document.getElementById("resultado").innerHTML = `<div class="c success last-action"><div class="check">✓</div><div><b>Última acción</b><div class="small">${escapar(ultimaAccion)}</div></div></div>`;
 }
 
 function mismaActividad(a,b){
@@ -1170,6 +1230,7 @@ function ordenar(){
     return;
   }
 
+  ultimaAccion = null;
   entrada.value = "";
 
   if(conversacionPendiente){
@@ -1359,7 +1420,7 @@ function guardarMultiples(){
   agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
   guardarAgenda(agenda);
   eventosPendientes = [];
-  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, guardé ${guardados.length} eventos</b><div class="small">Cada actividad quedó registrada con su fecha y horario.</div><button class="primary" onclick="abrirAgenda()">Ver en mi agenda</button></div>`;
+  registrarAccionCompletada(`Guardé ${guardados.length} eventos.`,`<div class="c success"><b>✓ Listo, guardé ${guardados.length} eventos</b><div class="small">Cada actividad quedó registrada con su fecha y horario.</div><button class="primary" onclick="abrirAgenda()">Ver en mi agenda</button></div>`);
   renderAgenda(); actualizarProximo();
 }
 
@@ -1574,7 +1635,7 @@ function confirmarModificacion(){
   const agenda = obtenerAgenda().map(x => x.id === eventoPendiente.idOriginal ? actualizado : x);
   guardarAgenda(agenda);
   eventoPendiente = null;
-  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, modifiqué el evento</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`;
+  registrarAccionCompletada(`Modifiqué ${actualizado.titulo}.`,`<div class="c success"><b>✓ Listo, modifiqué el evento</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`);
   renderAgenda(); actualizarProximo();
 }
 
@@ -1597,9 +1658,10 @@ function prepararEliminacion(pedido){
 
 function confirmarEliminacion(){
   if(!eventoPendiente) return;
+  const eliminado = {...eventoPendiente};
   guardarAgenda(obtenerAgenda().filter(x => x.id !== eventoPendiente.id));
   eventoPendiente = null;
-  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Evento eliminado</b><div class="small">La agenda quedó actualizada.</div></div>`;
+  registrarAccionCompletada(`Eliminé ${eliminado.titulo}.`,`<div class="c success"><b>✓ Evento eliminado</b><div class="small">La agenda quedó actualizada.</div></div>`);
   renderAgenda(); actualizarProximo();
 }
 
@@ -1613,6 +1675,7 @@ function mostrarRevision(){
         <b>🧠 Entendí esto</b>
         <div style="margin-top:12px">
           ${detalleEvento(eventoPendiente)}
+          ${selectorAvisos(eventoPendiente)}
         </div>
       </div>
 
@@ -1655,6 +1718,7 @@ function mostrarRevision(){
       <b>🧠 Entendí esto</b>
       <div style="margin-top:12px">
         ${detalleEvento(eventoPendiente)}
+        ${selectorAvisos(eventoPendiente)}
       </div>
     </div>
 
@@ -1737,7 +1801,7 @@ function confirmarMoverExistenteYGuardar(){
   const movido = {...movimientoConflictoPendiente.actualizado};
   movimientoConflictoPendiente = null;
   eventoPendiente = null;
-  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, resolví el conflicto</b><p>Moví la actividad anterior:</p>${detalleEvento(movido)}<hr><p>Y guardé la nueva:</p>${detalleEvento(guardado)}</div>`;
+  registrarAccionCompletada(`Moví ${movido.titulo} y guardé ${guardado.titulo}.`,`<div class="c success"><b>✓ Listo, resolví el conflicto</b><p>Moví la actividad anterior:</p>${detalleEvento(movido)}<hr><p>Y guardé la nueva:</p>${detalleEvento(guardado)}</div>`);
   renderAgenda();
   actualizarProximo();
 }
@@ -1811,7 +1875,7 @@ async function guardarConPermiso(){
   const guardado = {...eventoPendiente};
   eventoPendiente = null;
 
-  document.getElementById("resultado").innerHTML = `
+  registrarAccionCompletada(`Guardé ${guardado.titulo}.`,`
     <div class="c success">
       <b>✓ Listo, lo guardé</b>
       <div style="margin-top:12px">
@@ -1826,7 +1890,7 @@ async function guardarConPermiso(){
         Ver en mi agenda
       </button>
     </div>
-  `;
+  `);
 
   renderAgenda();
   actualizarProximo();
@@ -1846,13 +1910,13 @@ function cancelar(){
   `;
 }
 
-function mensajeAviso(evento){
-  return `${evento.icono} ${evento.titulo} es el ${fechaBonita(evento.fecha)} a las ${evento.hora}. Atlas te avisa ${evento.motivoAviso}.`;
+function mensajeAviso(evento,minutosAviso){
+  return `${evento.icono} ${evento.titulo} es el ${fechaBonita(evento.fecha)} a las ${evento.hora}. ${etiquetaAviso(minutosAviso)}.`;
 }
 
-function mostrarAviso(evento){
+function mostrarAviso(evento,minutosAviso=normalizarAvisos(evento)[0] ?? 60){
   const titulo = `${evento.icono} Recordatorio de Atlas`;
-  const mensaje = mensajeAviso(evento);
+  const mensaje = mensajeAviso(evento,minutosAviso);
 
   document.getElementById("noticeTitle").innerText = titulo;
   document.getElementById("noticeText").innerText = mensaje;
@@ -1866,7 +1930,7 @@ function mostrarAviso(evento){
     try{
       new Notification(titulo,{
         body:mensaje,
-        tag:`atlas-${evento.id}`
+        tag:`atlas-${evento.id}-${minutosAviso}`
       });
     }catch{}
   }
@@ -1874,7 +1938,7 @@ function mostrarAviso(evento){
 
 function probarAviso(id){
   const evento = obtenerAgenda().find(x => x.id === id);
-  if(evento) mostrarAviso(evento);
+  if(evento) mostrarAviso(evento,normalizarAvisos(evento)[0] ?? 60);
 }
 
 function inicioSemana(fecha){
@@ -1944,27 +2008,19 @@ function revisarAvisos(){
   const ahora = new Date();
 
   obtenerAgenda().forEach(evento => {
-    if(evento.avisoMostrado) return;
-
     const [h,m] = evento.hora.split(":").map(Number);
     const fechaEvento = fechaDesdeISO(evento.fecha);
     fechaEvento.setHours(h,m,0,0);
-
-    const fechaAviso = new Date(
-      fechaEvento.getTime()-evento.avisoMinutos*60000
-    );
-
-    if(ahora >= fechaAviso && ahora < fechaEvento){
-      mostrarAviso(evento);
-
-      const agenda = obtenerAgenda().map(item =>
-        item.id === evento.id
-          ? {...item,avisoMostrado:true}
-          : item
-      );
-
-      guardarAgenda(agenda);
-    }
+    const mostrados = new Set(Array.isArray(evento.avisosMostrados) ? evento.avisosMostrados.map(Number) : (evento.avisoMostrado ? [Number(evento.avisoMinutos ?? 60)] : []));
+    const pendiente = normalizarAvisos(evento).find(minutosAviso => {
+      if(mostrados.has(minutosAviso)) return false;
+      const fechaAviso = new Date(fechaEvento.getTime()-minutosAviso*60000);
+      return ahora >= fechaAviso && ahora < fechaEvento;
+    });
+    if(pendiente === undefined) return;
+    mostrarAviso(evento,pendiente);
+    mostrados.add(pendiente);
+    guardarAgenda(obtenerAgenda().map(item => item.id === evento.id ? {...item,avisosMostrados:[...mostrados]} : item));
   });
 }
 
