@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3 — Vos hablá</title>
+<title>Atlas v1.3.1 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3</div>
+    <div class="version">Atlas v1.3.1</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3 — títulos más limpios, fechas corregidas, conversación despejada y avisos múltiples.
+      Atlas v1.3.1 — cada actividad conserva exactamente los avisos que elegiste, incluso al resolver conflictos.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v13";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v131";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -1136,6 +1136,17 @@ function normalizarAvisos(evento){
   return [...new Set(valores.map(Number).filter(x => Number.isFinite(x) && x >= 0))].sort((a,b) => b-a);
 }
 
+function copiarEventoConAvisos(evento){
+  const avisosMinutos = [...normalizarAvisos(evento)];
+  const copia = {
+    ...evento,
+    avisosMinutos,
+    avisoMinutos:avisosMinutos[0] ?? 60
+  };
+  if(Array.isArray(evento?.avisosMostrados)) copia.avisosMostrados = [...evento.avisosMostrados];
+  return copia;
+}
+
 function etiquetaAviso(minutosAviso){
   if(minutosAviso === 0) return "A la hora";
   if(minutosAviso === 15) return "15 min antes";
@@ -1772,9 +1783,11 @@ function buscarHoraLibreParaExistente(existente,direccion){
 function elegirMoverExistente(id,hora){
   const existente = obtenerAgenda().find(x => String(x.id) === String(id));
   if(!existente || !eventoPendiente) return;
+  const propuestaConfirmada = copiarEventoConAvisos(eventoPendiente);
   movimientoConflictoPendiente = {
-    original:{...existente},
-    actualizado:{...existente,hora}
+    original:copiarEventoConAvisos(existente),
+    actualizado:copiarEventoConAvisos({...existente,hora}),
+    nuevaPropuesta:propuestaConfirmada
   };
   document.getElementById("resultado").innerHTML = `
     <div class="c info">
@@ -1783,7 +1796,7 @@ function elegirMoverExistente(id,hora){
       <p><b>Antes:</b></p>${detalleEvento(existente)}
       <p><b>Después:</b></p>${detalleEvento(movimientoConflictoPendiente.actualizado)}
       <hr>
-      <p>Y voy a guardar tu nueva propuesta:</p>${detalleEvento(eventoPendiente)}
+      <p>Y voy a guardar tu nueva propuesta:</p>${detalleEvento(propuestaConfirmada)}
       <div class="small">Nada se modificará hasta que confirmes.</div>
       <button class="primary" onclick="confirmarMoverExistenteYGuardar()">Confirmar ambos cambios</button>
       <button class="secondary" onclick="mostrarRevision()">Volver a las opciones</button>
@@ -1793,8 +1806,8 @@ function elegirMoverExistente(id,hora){
 
 function confirmarMoverExistenteYGuardar(){
   if(!movimientoConflictoPendiente || !eventoPendiente) return;
-  const agenda = obtenerAgenda().map(x => x.id === movimientoConflictoPendiente.original.id ? {...movimientoConflictoPendiente.actualizado} : x);
-  const guardado = {...eventoPendiente};
+  const agenda = obtenerAgenda().map(x => x.id === movimientoConflictoPendiente.original.id ? copiarEventoConAvisos(movimientoConflictoPendiente.actualizado) : x);
+  const guardado = copiarEventoConAvisos(movimientoConflictoPendiente.nuevaPropuesta || eventoPendiente);
   agenda.push(guardado);
   agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
   guardarAgenda(agenda);
