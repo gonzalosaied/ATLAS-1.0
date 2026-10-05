@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3.2 — Vos hablá</title>
+<title>Atlas v1.3.3 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3.2</div>
+    <div class="version">Atlas v1.3.3</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3.2 — búsquedas seguras y precisas al modificar o eliminar actividades.
+      Atlas v1.3.3 — selección directa y conversación continua cuando hay varias coincidencias.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v132";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v133";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -1446,6 +1446,27 @@ function completarConversacion(respuesta){
     complemento.hora = horasRespuesta[horasRespuesta.length-1].hora;
   }
 
+  if(pendiente.tipo === "elegirEliminar"){
+    let candidatos = [...pendiente.candidatos];
+    const indiceDicho = respuestaNormalizada.match(/\b(?:la\s+)?(primera|segunda|tercera|cuarta|quinta)\b/)?.[1];
+    const indices = {primera:0,segunda:1,tercera:2,cuarta:3,quinta:4};
+    if(indiceDicho) candidatos = candidatos[indices[indiceDicho]] ? [candidatos[indices[indiceDicho]]] : [];
+    if(complemento.fecha) candidatos = candidatos.filter(x => x.fecha === complemento.fecha);
+    if(complemento.hora) candidatos = candidatos.filter(x => x.hora === complemento.hora);
+
+    if(candidatos.length === 1){
+      mostrarConfirmacionEliminacion(candidatos[0]);
+      return;
+    }
+    if(!candidatos.length){
+      establecerConversacionPendiente(pendiente);
+      document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré esa opción entre las actividades mostradas.</b><p>Decime el día, el horario o elegí una de las opciones.</p>${botonesConversacion()}<div class="small">No eliminé nada.</div></div>`;
+      return;
+    }
+    mostrarOpcionesEliminacion(candidatos,pendiente.evento);
+    return;
+  }
+
   if(pendiente.tipo === "reprogramarPasado" && !complemento.fecha && !complemento.hora){
     establecerConversacionPendiente(pendiente);
     document.getElementById("resultado").innerHTML = `<div class="c info"><b>Necesito un nuevo día o una nueva hora.</b><p>Por ejemplo: “mañana a las 9”.</p>${botonesConversacion()}</div>`;
@@ -1665,10 +1686,33 @@ function prepararEliminacion(pedido){
   }
   const pedidoGenerico = !pedido.fecha && !pedido.hora && /^(?:gimnasio|futbol|reunion|turno|actividad|natacion)$/.test(normalizar(pedido.titulo));
   if(candidatos.length > 1 || pedidoGenerico){
-    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento que coincide.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime el día o el horario para identificar cuál querés eliminar.</p><div class="small">No eliminé nada.</div></div>`;
+    mostrarOpcionesEliminacion(candidatos,pedido);
     return;
   }
-  eventoPendiente = {...candidatos[0],accion:"eliminar"};
+  mostrarConfirmacionEliminacion(candidatos[0]);
+}
+
+function mostrarOpcionesEliminacion(candidatos,pedido){
+  const opciones = candidatos.map(evento => `<div class="delete-choice">${detalleEvento(evento)}<button class="option" onclick="seleccionarEventoParaEliminar(${JSON.stringify(evento.id)})">Elegir esta actividad</button></div>`).join("<hr>");
+  establecerConversacionPendiente({
+    tipo:"elegirEliminar",
+    candidatos:candidatos.map(x => ({...x})),
+    evento:{titulo:pedido?.titulo || candidatos[0]?.titulo || "actividad"},
+    falta:"elegir cuál eliminar"
+  });
+  document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento que coincide.</b><div style="margin-top:12px">${opciones}</div><p>Elegí una actividad o decime el día o el horario.</p>${botonesConversacion()}<div class="small">No eliminé nada.</div></div>`;
+}
+
+function seleccionarEventoParaEliminar(id){
+  const permitidos = conversacionPendiente?.tipo === "elegirEliminar" ? conversacionPendiente.candidatos : [];
+  const elegido = permitidos.find(x => String(x.id) === String(id));
+  if(!elegido) return;
+  mostrarConfirmacionEliminacion(elegido);
+}
+
+function mostrarConfirmacionEliminacion(evento){
+  establecerConversacionPendiente(null);
+  eventoPendiente = {...evento,accion:"eliminar"};
   document.getElementById("resultado").innerHTML = `<div class="c warn"><b>¿Querés eliminar este evento?</b><div style="margin-top:12px">${detalleEvento(eventoPendiente)}</div><button class="primary danger" onclick="confirmarEliminacion()">Sí, eliminar</button><button class="secondary" onclick="cancelar()">No, conservar</button></div>`;
 }
 
