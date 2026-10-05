@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3.3 — Vos hablá</title>
+<title>Atlas v1.3.4 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3.3</div>
+    <div class="version">Atlas v1.3.4</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3.3 — selección directa y conversación continua cuando hay varias coincidencias.
+      Atlas v1.3.4 — selección natural por día, fecha, horario u orden cuando hay varias coincidencias.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v133";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v134";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -1436,6 +1436,53 @@ function guardarMultiples(){
   renderAgenda(); actualizarProximo();
 }
 
+function seleccionarEntreCandidatos(respuesta,candidatos){
+  const texto = normalizar(respuesta);
+  let filtrados = [...candidatos];
+  let usoCriterio = false;
+
+  const ordinales = {primera:0,primer:0,segunda:1,segundo:1,tercera:2,tercero:2,cuarta:3,cuarto:3,quinta:4,quinto:4};
+  const ordinal = texto.match(/\b(?:la|el)?\s*(primera|primer|segunda|segundo|tercera|tercero|cuarta|cuarto|quinta|quinto)\b/)?.[1];
+  const posicion = texto.match(/\b(?:opcion|actividad|evento)\s*(?:numero\s*)?(\d)\b/)?.[1];
+  if(ordinal || posicion){
+    const indice = ordinal ? ordinales[ordinal] : Number(posicion)-1;
+    return candidatos[indice] ? [candidatos[indice]] : [];
+  }
+
+  const diasSemana = {domingo:0,lunes:1,martes:2,miercoles:3,jueves:4,viernes:5,sabado:6};
+  const nombreDia = texto.match(/\b(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/)?.[1];
+  if(nombreDia){
+    usoCriterio = true;
+    filtrados = filtrados.filter(x => fechaDesdeISO(x.fecha).getDay() === diasSemana[nombreDia]);
+  }
+
+  // En una respuesta como “la del viernes 16” o “la del 16”, 16 es el día
+  // del mes. No debe confundirse con las 16:00.
+  const diaConSemana = texto.match(/\b(?:domingo|lunes|martes|miercoles|jueves|viernes|sabado)\s+(?:el\s+)?(\d{1,2})\b/)?.[1];
+  const diaSolo = texto.match(/\b(?:del|dia)\s+(\d{1,2})\b/)?.[1];
+  const diaMes = Number(diaConSemana || diaSolo || 0);
+  if(diaMes >= 1 && diaMes <= 31){
+    usoCriterio = true;
+    filtrados = filtrados.filter(x => fechaDesdeISO(x.fecha).getDate() === diaMes);
+  }
+
+  const fechaExactaMencionada = /\b(?:\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?|\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre))\b/.test(texto);
+  if(fechaExactaMencionada){
+    usoCriterio = true;
+    const fecha = extraerFecha(texto,null);
+    filtrados = fecha ? filtrados.filter(x => x.fecha === fecha) : [];
+  }
+
+  const horaDicha = texto.match(/\b(?:a|de)\s+las?\s+(\d{1,2})(?:[:.]([0-5]\d))?\b/);
+  if(horaDicha){
+    usoCriterio = true;
+    const hora = `${String(Number(horaDicha[1])).padStart(2,"0")}:${horaDicha[2] || "00"}`;
+    filtrados = filtrados.filter(x => x.hora === hora);
+  }
+
+  return usoCriterio ? filtrados : [];
+}
+
 function completarConversacion(respuesta){
   const pendiente = conversacionPendiente;
   establecerConversacionPendiente(null);
@@ -1447,12 +1494,7 @@ function completarConversacion(respuesta){
   }
 
   if(pendiente.tipo === "elegirEliminar"){
-    let candidatos = [...pendiente.candidatos];
-    const indiceDicho = respuestaNormalizada.match(/\b(?:la\s+)?(primera|segunda|tercera|cuarta|quinta)\b/)?.[1];
-    const indices = {primera:0,segunda:1,tercera:2,cuarta:3,quinta:4};
-    if(indiceDicho) candidatos = candidatos[indices[indiceDicho]] ? [candidatos[indices[indiceDicho]]] : [];
-    if(complemento.fecha) candidatos = candidatos.filter(x => x.fecha === complemento.fecha);
-    if(complemento.hora) candidatos = candidatos.filter(x => x.hora === complemento.hora);
+    const candidatos = seleccionarEntreCandidatos(respuesta,pendiente.candidatos);
 
     if(candidatos.length === 1){
       mostrarConfirmacionEliminacion(candidatos[0]);
