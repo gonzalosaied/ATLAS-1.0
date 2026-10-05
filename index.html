@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3.1 — Vos hablá</title>
+<title>Atlas v1.3.2 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3.1</div>
+    <div class="version">Atlas v1.3.2</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3.1 — cada actividad conserva exactamente los avisos que elegiste, incluso al resolver conflictos.
+      Atlas v1.3.2 — búsquedas seguras y precisas al modificar o eliminar actividades.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v131";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v132";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -910,7 +910,8 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
 
   let tituloGenerico = textoOriginal.trim()
     .replace(/^[“”"'\s]+|[“”"'\s]+$/g,"")
-    .replace(/^(?:por\s+favor\s+)?(?:agendame|agéndame|agendá|agenda|anotame|anótame|anotá|programame|prográmame|programá|creame|créame|creá)\s+/i,"")
+    .replace(/^(?:por\s+favor\s+)?(?:agendame|agéndame|agendá|agenda|anotame|anótame|anotá|programame|prográmame|programá|creame|créame|creá|eliminame|elimíname|eliminá|elimina|borrame|bórrame|borrá|borra|sacame|sácame|sacá|saca|cancelame|cancélame|cancelá|cancela|cambiame|cámbiame|cambiá|cambia|modificame|modifícame|modificá|modifica|moveme|mové|mueve|reprogramame|reprográmame|reprogramá|reprograma)\s+/i,"")
+    .replace(/^(?:el|la|los|las|un|una)\s+/i,"")
     .replace(/\s+\b(?:todos?|cada|los\s+(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábados|sabados|domingos))\b[\s\S]*$/i,"")
     .replace(/\s+\b(?:hoy|mañana|pasado mañana|el próximo|la próxima|este|esta)\b[\s\S]*$/i,"")
     .replace(/\s+\b(?:a\s+las?|al)\s+(?:\d|mediodía|mediodia)[\s\S]*$/i,"")
@@ -1509,15 +1510,16 @@ function confirmarComoCreacion(){
 function coincideActividad(evento,filtro){
   const a = normalizar(evento.titulo);
   const b = normalizar(filtro.titulo);
-  const original = normalizar(filtro.textoOriginal || "");
-  const generico = b === original.slice(0,60);
+
+  // Una búsqueda sin nombre concreto nunca debe equivaler a toda la agenda.
+  if(!b || b === "actividad") return false;
 
   // Cuando se menciona una persona, la coincidencia debe ser exacta.
   // Así “Reunión con Fernando” no selecciona reuniones con otras personas.
   if(/^reunion con .+/.test(b)) return a === b;
   if(b === "reunion") return a === "reunion" || a.startsWith("reunion con ");
 
-  return generico || a.includes(b) || b.includes(a) ||
+  return a.includes(b) || b.includes(a) ||
     (a.includes("futbol") && b.includes("futbol")) ||
     (a.includes("gimnasio") && /gimnasio|gym/.test(b));
 }
@@ -1652,6 +1654,9 @@ function confirmarModificacion(){
 
 function prepararEliminacion(pedido){
   let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
+  const textoPedido = normalizar(pedido.textoOriginal || "");
+  const incluyePasados = Boolean(pedido.fecha) || /\b(finalizad[oa]s?|pasad[oa]s?|anterior(?:es)?|historial)\b/.test(textoPedido);
+  if(!incluyePasados) candidatos = candidatos.filter(x => estadoEvento(x).clave !== "finished");
   if(pedido.fecha) candidatos = candidatos.filter(x => x.fecha === pedido.fecha);
   if(pedido.hora) candidatos = candidatos.filter(x => x.hora === pedido.hora);
   if(!candidatos.length){
