@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.1 — Vos hablá</title>
+<title>Atlas v1.2 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -100,6 +100,20 @@ textarea{
   font-size:15px;
   resize:vertical;
 }
+
+.conversation-context{
+  display:none;
+  margin:10px 0 0;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#172554;
+  border:1px solid #2563eb;
+  color:#bfdbfe;
+  font-size:13px;
+}
+
+.conversation-context.show{display:block}
+.conversation-context b{color:#fff}
 
 button{cursor:pointer}
 
@@ -267,7 +281,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.1</div>
+    <div class="version">Atlas v1.2</div>
   </div>
 
   <div class="c">
@@ -305,10 +319,12 @@ hr{
 
   <textarea
     id="entrada"
-    placeholder="También podés escribir la frase para probar..."
+    placeholder="Escribile a Kai o usá el micrófono..."
   ></textarea>
 
-  <button class="primary" onclick="ordenar()">Ordenar esto</button>
+  <div id="conversationContext" class="conversation-context"></div>
+
+  <button class="primary" onclick="ordenar()">Enviar a Kai</button>
 
   <div id="resultado"></div>
 </section>
@@ -355,7 +371,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.1 — entiende, valida y pide permiso antes de cambiar tu agenda.
+      Atlas v1.2 — conversación continua, mejor interpretación y resolución completa de conflictos.
     </span>
   </div>
 </section>
@@ -369,11 +385,12 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v11";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v12";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
+let movimientoConflictoPendiente = null;
 let reconocimiento = null;
 let escuchando = false;
 let vistaAgenda = "semana";
@@ -670,6 +687,12 @@ function extraerFecha(textoNormalizado, hora){
   const hoy = new Date();
   hoy.setHours(0,0,0,0);
 
+  const dentroSemanas = textoNormalizado.match(/\bdentro\s+de\s+(\d+|un|una|uno|dos|tres|cuatro|cinco|seis|siete)\s+semanas?\b/);
+  if(dentroSemanas){
+    const cantidad = NUMEROS[dentroSemanas[1]] ?? Number(dentroSemanas[1]);
+    return fechaLocalISO(sumarDias(hoy,cantidad*7));
+  }
+
   const dentroDias = textoNormalizado.match(/\bdentro\s+de\s+(\d+|un|uno|dos|tres|cuatro|cinco|seis|siete)\s+dias?\b/);
   if(dentroDias){
     const cantidad = NUMEROS[dentroDias[1]] ?? Number(dentroDias[1]);
@@ -730,6 +753,22 @@ function extraerFecha(textoNormalizado, hora){
     viernes:5,
     sabado:6
   };
+
+  const ultimoDiaDelMes = textoNormalizado.match(/\b(?:el\s+)?ultimo\s+(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b/);
+  if(ultimoDiaDelMes){
+    const indiceDia = dias[ultimoDiaDelMes[1]];
+    const indiceMes = meses[ultimoDiaDelMes[2]];
+    let anio = Number(ultimoDiaDelMes[3] || hoy.getFullYear());
+    let fecha = new Date(anio,indiceMes+1,0);
+    const retroceso = (fecha.getDay()-indiceDia+7)%7;
+    fecha.setDate(fecha.getDate()-retroceso);
+    if(!ultimoDiaDelMes[3] && fecha < hoy){
+      anio += 1;
+      fecha = new Date(anio,indiceMes+1,0);
+      fecha.setDate(fecha.getDate()-((fecha.getDay()-indiceDia+7)%7));
+    }
+    return fechaLocalISO(fecha);
+  }
 
   for(const [nombre,indice] of Object.entries(dias)){
     if(textoNormalizado.includes(nombre)){
@@ -1094,15 +1133,30 @@ function esRespuestaAlPendiente(texto,pendiente){
   return "respuesta";
 }
 
-function botonesConversacion(){
-  return `<button class="secondary" onclick="prepararRespuesta()">✍️ Responder ahora</button><button class="secondary" onclick="cancelar()">Cancelar esta conversación</button>`;
+function actualizarContextoConversacion(){
+  const caja = document.getElementById("conversationContext");
+  const entrada = document.getElementById("entrada");
+  if(!caja || !entrada) return;
+  if(!conversacionPendiente){
+    caja.classList.remove("show");
+    caja.innerHTML = "";
+    entrada.placeholder = "Escribile a Kai o usá el micrófono...";
+    return;
+  }
+  const evento = conversacionPendiente.evento;
+  const falta = conversacionPendiente.falta ? ` · falta ${escapar(conversacionPendiente.falta)}` : "";
+  caja.innerHTML = `<b>Conversación activa:</b> completando ${escapar(evento?.titulo || "tu pedido")}${falta}. Respondé directamente acá o por voz.`;
+  caja.classList.add("show");
+  entrada.placeholder = "Respondé directamente a Kai...";
 }
 
-function prepararRespuesta(){
-  const entrada = document.getElementById("entrada");
-  entrada.value = "";
-  entrada.focus();
-  entrada.scrollIntoView({behavior:"smooth",block:"center"});
+function establecerConversacionPendiente(valor){
+  conversacionPendiente = valor;
+  actualizarContextoConversacion();
+}
+
+function botonesConversacion(){
+  return `<div class="small" style="margin-top:10px">Escribí la respuesta en el campo de abajo o tocá el micrófono. También podés decir “cancelá”.</div>`;
 }
 
 function ordenar(){
@@ -1116,6 +1170,8 @@ function ordenar(){
     return;
   }
 
+  entrada.value = "";
+
   if(conversacionPendiente){
     const tipoMensaje = esRespuestaAlPendiente(texto,conversacionPendiente);
     if(tipoMensaje === "cancelar"){
@@ -1126,7 +1182,7 @@ function ordenar(){
       completarConversacion(texto);
       return;
     }
-    conversacionPendiente = null;
+    establecerConversacionPendiente(null);
     eventoPendiente = null;
   }
 
@@ -1191,7 +1247,7 @@ function procesarCreacion(evento){
   }
 
   if(!evento.fecha && !evento.hora){
-    conversacionPendiente = {tipo:"completar",evento,falta:"fecha y hora"};
+    establecerConversacionPendiente({tipo:"completar",evento,falta:"fecha y hora"});
     resultado.innerHTML = `
       <div class="c info">
         <b>¿Cuándo sería?</b>
@@ -1204,7 +1260,7 @@ function procesarCreacion(evento){
   }
 
   if(!evento.fecha){
-    conversacionPendiente = {tipo:"completar",evento,falta:"fecha"};
+    establecerConversacionPendiente({tipo:"completar",evento,falta:"fecha"});
     resultado.innerHTML = `
       <div class="c info">
         <b>¿Qué día querés hacer esto?</b>
@@ -1217,7 +1273,7 @@ function procesarCreacion(evento){
 
   if(!evento.hora){
     const periodoPreferido = normalizar(evento.textoOriginal || "").match(/(?:por|de)\s+la\s+(manana|tarde|noche|madrugada)/)?.[1] || "";
-    conversacionPendiente = {tipo:"completar",evento,falta:"hora",periodoPreferido};
+    establecerConversacionPendiente({tipo:"completar",evento,falta:"hora",periodoPreferido});
     resultado.innerHTML = `
       <div class="c info">
         <b>¿A qué hora sería?</b>
@@ -1229,13 +1285,13 @@ function procesarCreacion(evento){
   }
 
   if(evento.horaAmbigua){
-    conversacionPendiente = {tipo:"periodo",evento};
+    establecerConversacionPendiente({tipo:"periodo",evento});
     resultado.innerHTML = `<div class="c info"><b>Quiero confirmar el horario.</b><p>¿${evento.hora} de la mañana o de la tarde?</p><div class="small">Ya conservé el resto del evento; respondeme solamente “de la mañana” o “de la tarde”.</div>${botonesConversacion()}</div>`;
     return;
   }
 
   if(esEventoPasado(evento)){
-    conversacionPendiente = {tipo:"reprogramarPasado",evento};
+    establecerConversacionPendiente({tipo:"reprogramarPasado",evento});
     resultado.innerHTML = `<div class="c warn"><b>Ese horario ya pasó.</b><p>${detalleEvento(evento)}</p><p>¿Quisiste decir otro día u otra hora?</p><div class="small">No guardé nada.</div>${botonesConversacion()}</div>`;
     return;
   }
@@ -1309,7 +1365,7 @@ function guardarMultiples(){
 
 function completarConversacion(respuesta){
   const pendiente = conversacionPendiente;
-  conversacionPendiente = null;
+  establecerConversacionPendiente(null);
   const complemento = interpretar(respuesta);
   const respuestaNormalizada = normalizar(respuesta);
   const horasRespuesta = extraerHoras(respuestaNormalizada);
@@ -1318,14 +1374,14 @@ function completarConversacion(respuesta){
   }
 
   if(pendiente.tipo === "reprogramarPasado" && !complemento.fecha && !complemento.hora){
-    conversacionPendiente = pendiente;
+    establecerConversacionPendiente(pendiente);
     document.getElementById("resultado").innerHTML = `<div class="c info"><b>Necesito un nuevo día o una nueva hora.</b><p>Por ejemplo: “mañana a las 9”.</p>${botonesConversacion()}</div>`;
     return;
   }
   if(pendiente.tipo === "periodo"){
     const r = normalizar(respuesta);
     if(!/\b(manana|tarde|noche|madrugada)\b/.test(r)){
-      conversacionPendiente = pendiente;
+      establecerConversacionPendiente(pendiente);
       document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿De la mañana o de la tarde?</b><p>Necesito esa aclaración para no inventar el horario.</p></div>`;
       return;
     }
@@ -1337,7 +1393,7 @@ function completarConversacion(respuesta){
   }
   if(pendiente.tipo === "modificar"){
     if(!complemento.hora){
-      conversacionPendiente = pendiente;
+      establecerConversacionPendiente(pendiente);
       document.getElementById("resultado").innerHTML = `<div class="c info"><b>No llegué a identificar el nuevo horario.</b><p>Decímelo, por ejemplo: “A las seis de la tarde”.</p></div>`;
       return;
     }
@@ -1347,7 +1403,7 @@ function completarConversacion(respuesta){
   }
   const periodoRespuesta = respuestaNormalizada.match(/\b(?:a|por|de)\s+la\s+(manana|tarde|noche|madrugada)\b/)?.[1] || "";
   if(!complemento.hora && periodoRespuesta){
-    conversacionPendiente = {...pendiente,periodoPreferido:periodoRespuesta};
+    establecerConversacionPendiente({...pendiente,periodoPreferido:periodoRespuesta});
     const etiquetas = {manana:"mañana",tarde:"tarde",noche:"noche",madrugada:"madrugada"};
     document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué hora de la ${etiquetas[periodoRespuesta]}?</b><p>Conservé ${escapar(pendiente.evento.titulo)} para el ${fechaBonita(pendiente.evento.fecha)}.</p><div class="small">Decime solamente la hora; no voy a inventarla.</div>${botonesConversacion()}</div>`;
     return;
@@ -1495,7 +1551,7 @@ function prepararModificacion(pedido){
   }
   if(!horaNueva || (horas.length < 2 && horaNueva === candidatos[0].hora)){
     document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué nuevo horario querés moverlo?</b><p>${detalleEvento(candidatos[0])}</p></div>`;
-    conversacionPendiente = {tipo:"modificar",evento:candidatos[0]};
+    establecerConversacionPendiente({tipo:"modificar",evento:candidatos[0]});
     return;
   }
 
@@ -1581,6 +1637,18 @@ function mostrarRevision(){
   }).join("");
   const antes = buscarHoraLibre(eventoPendiente,-1);
   const despues = buscarHoraLibre(eventoPendiente,1);
+  const opcionesExistentes = conflictos.map(conflicto => {
+    const antesExistente = buscarHoraLibreParaExistente(conflicto,-1);
+    const despuesExistente = buscarHoraLibreParaExistente(conflicto,1);
+    return `
+      <div class="small" style="margin-top:14px">También podés mover la actividad que ya estaba guardada:</div>
+      <button class="option" onclick="elegirMoverExistente(${JSON.stringify(conflicto.id)},'${antesExistente}')">
+        Mover ${escapar(conflicto.titulo)} a las ${antesExistente}
+      </button>
+      <button class="option" onclick="elegirMoverExistente(${JSON.stringify(conflicto.id)},'${despuesExistente}')">
+        Mover ${escapar(conflicto.titulo)} a las ${despuesExistente}
+      </button>`;
+  }).join("");
 
   resultado.innerHTML = `
     <div class="c">
@@ -1608,6 +1676,8 @@ function mostrarRevision(){
         Mover ${escapar(eventoPendiente.titulo)} a las ${despues}
       </button>
 
+      ${opcionesExistentes}
+
       <button class="option" onclick="mantenerConflicto()">
         Mantener ambos en el mismo horario
       </button>
@@ -1617,6 +1687,59 @@ function mostrarRevision(){
       </button>
     </div>
   `;
+}
+
+function seSuperponen(a,b){
+  if(!a?.fecha || !a?.hora || !b?.fecha || !b?.hora || a.fecha !== b.fecha) return false;
+  return minutos(a.hora) < minutos(b.hora)+b.duracion && minutos(a.hora)+a.duracion > minutos(b.hora);
+}
+
+function buscarHoraLibreParaExistente(existente,direccion){
+  let candidato = minutos(existente.hora);
+  for(let i=0;i<48;i++){
+    candidato += 30*direccion;
+    if(candidato < 0 || candidato+existente.duracion > 24*60) break;
+    const temporal = {...existente,hora:aHora(candidato),excluirId:existente.id};
+    if(buscarConflictos(temporal).length === 0 && !seSuperponen(temporal,eventoPendiente)) return temporal.hora;
+  }
+  return existente.hora;
+}
+
+function elegirMoverExistente(id,hora){
+  const existente = obtenerAgenda().find(x => String(x.id) === String(id));
+  if(!existente || !eventoPendiente) return;
+  movimientoConflictoPendiente = {
+    original:{...existente},
+    actualizado:{...existente,hora}
+  };
+  document.getElementById("resultado").innerHTML = `
+    <div class="c info">
+      <b>Antes de hacer los dos cambios</b>
+      <p>Voy a mover la actividad que ya estaba guardada:</p>
+      <p><b>Antes:</b></p>${detalleEvento(existente)}
+      <p><b>Después:</b></p>${detalleEvento(movimientoConflictoPendiente.actualizado)}
+      <hr>
+      <p>Y voy a guardar tu nueva propuesta:</p>${detalleEvento(eventoPendiente)}
+      <div class="small">Nada se modificará hasta que confirmes.</div>
+      <button class="primary" onclick="confirmarMoverExistenteYGuardar()">Confirmar ambos cambios</button>
+      <button class="secondary" onclick="mostrarRevision()">Volver a las opciones</button>
+      <button class="secondary" onclick="cancelar()">Cancelar</button>
+    </div>`;
+}
+
+function confirmarMoverExistenteYGuardar(){
+  if(!movimientoConflictoPendiente || !eventoPendiente) return;
+  const agenda = obtenerAgenda().map(x => x.id === movimientoConflictoPendiente.original.id ? {...movimientoConflictoPendiente.actualizado} : x);
+  const guardado = {...eventoPendiente};
+  agenda.push(guardado);
+  agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  guardarAgenda(agenda);
+  const movido = {...movimientoConflictoPendiente.actualizado};
+  movimientoConflictoPendiente = null;
+  eventoPendiente = null;
+  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ Listo, resolví el conflicto</b><p>Moví la actividad anterior:</p>${detalleEvento(movido)}<hr><p>Y guardé la nueva:</p>${detalleEvento(guardado)}</div>`;
+  renderAgenda();
+  actualizarProximo();
 }
 
 function buscarHoraLibre(evento,direccion){
@@ -1712,7 +1835,8 @@ async function guardarConPermiso(){
 function cancelar(){
   eventoPendiente = null;
   eventosPendientes = [];
-  conversacionPendiente = null;
+  movimientoConflictoPendiente = null;
+  establecerConversacionPendiente(null);
 
   document.getElementById("resultado").innerHTML = `
     <div class="c">
@@ -1922,6 +2046,7 @@ function reiniciarPrueba(){
 inicializarAgenda();
 renderAgenda();
 actualizarProximo();
+actualizarContextoConversacion();
 revisarAvisos();
 setInterval(revisarAvisos,15000);
 </script>
