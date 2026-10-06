@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3.4 — Vos hablá</title>
+<title>Atlas v1.3.5 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3.4</div>
+    <div class="version">Atlas v1.3.5</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3.4 — selección natural por día, fecha, horario u orden cuando hay varias coincidencias.
+      Atlas v1.3.5 — cambios de día y horario con lenguaje natural, sin duplicar actividades.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v134";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v135";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -807,8 +807,8 @@ function extraerFecha(textoNormalizado, hora){
 function clasificarIntencion(textoNormalizado){
   if(/\b(clima|tiempo|temperatura|pronostico)\b/.test(textoNormalizado)) return "clima";
   if(/\b(no\s+(?:agendes|agendar|anotes|guardes|crees)|solo\s+quiero\s+saber|estoy\s+libre|tengo\s+libre|hay\s+algo)\b/.test(textoNormalizado)) return "disponibilidad";
-  if(/\b(que tengo|que tarea|que hay|que dias tengo|que dia tengo|cuando tengo|mostrame|mostrar|consultar|cual es|como esta mi agenda|como esta la agenda|agenda de hoy|en mi agenda)\b/.test(textoNormalizado)) return "consultar";
-  if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:ar|ame|alo|arla|arlo|en)?|reprogram\w*|modific\w*)\b/.test(textoNormalizado)) return "modificar";
+  if(/\b(que tengo|que tarea|que hay|que dias tengo|que dia tengo|que (?:reuniones?|actividades?|eventos?|turnos?) tengo|cuando tengo|mostrame|mostrar|consultar|cual es|como esta mi agenda|como esta la agenda|agenda de hoy|en mi agenda)\b/.test(textoNormalizado)) return "consultar";
+  if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:a|ar|ame|alo|ala|arla|arlo|en)?|reprogram\w*|modific\w*|atras\w*|adelant\w*|corre|correme)\b/.test(textoNormalizado)) return "modificar";
   if(/\b(eliminar|elimina|eliminame|borrar|borra|borrame|cancelar|cancela|cancelame|sacar|saca|sacame)\b/.test(textoNormalizado)) return "eliminar";
   if(/\b(agendar|agenda|agendas|agendame|agendes|guardar|guarda|anotar|anota|recordame|crea|crear|programa|programar)\b/.test(textoNormalizado)) return "crear";
   if(/\b(tengo|voy|debo|necesito|juego|rindo|llevo|paso)\b/.test(textoNormalizado)) return "informar";
@@ -837,14 +837,14 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
     };
   }
 
-  if(/\b(reunion|junt(?:o|arme|arse|a))\b/.test(textoNormalizado)){
+  if(/\b(reunion|reuniones|junt(?:o|arme|arse|a))\b/.test(textoNormalizado)){
     let titulo = "Reunión";
 
     if(textoNormalizado.includes("escuela")){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/(?:reuni[oó]n|me\s+junto|juntarme)(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9:-]+){0,5}?\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i)
+    const persona = textoOriginal.match(/(?:reuni[oó]n(?:es)?|me\s+junto|juntarme)(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9:-]+){0,5}?\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para)\b|[.,;]|$)/i)
       || textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|durante|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;]|$)/i);
     if(persona){
       const nombre = persona[1].replace(/\s+(?:de|del|y)$/i,"").trim();
@@ -1528,12 +1528,18 @@ function completarConversacion(respuesta){
     return;
   }
   if(pendiente.tipo === "modificar"){
-    if(!complemento.hora){
+    if(!complemento.hora && !complemento.fecha){
       establecerConversacionPendiente(pendiente);
-      document.getElementById("resultado").innerHTML = `<div class="c info"><b>No llegué a identificar el nuevo horario.</b><p>Decímelo, por ejemplo: “A las seis de la tarde”.</p></div>`;
+      document.getElementById("resultado").innerHTML = `<div class="c info"><b>No llegué a identificar el nuevo día ni el nuevo horario.</b><p>Decímelo, por ejemplo: “El jueves a las seis de la tarde”.</p></div>`;
       return;
     }
-    eventoPendiente = {...pendiente.evento,hora:complemento.hora,idOriginal:pendiente.evento.id,accion:"modificar"};
+    eventoPendiente = {
+      ...pendiente.evento,
+      fecha:complemento.fecha || pendiente.evento.fecha,
+      hora:complemento.hora || pendiente.evento.hora,
+      idOriginal:pendiente.evento.id,
+      accion:"modificar"
+    };
     mostrarConfirmacionModificacion(pendiente.evento);
     return;
   }
@@ -1650,13 +1656,60 @@ function fechasMencionadas(texto,hora){
   return fechas;
 }
 
+function dividirDestinoTemporal(textoNormalizado){
+  const referencia = "(?:el\\s+)?(?:hoy|manana|pasado\\s+manana|domingo|lunes|martes|miercoles|jueves|viernes|sabado|\\d{1,2}(?:[/-]\\d{1,2})?|\\d{1,2}\\s+de\\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre))";
+  const patron = new RegExp(`\\s+(?:para|al)\\s+(?=${referencia}\\b)`);
+  const coincidencia = patron.exec(textoNormalizado);
+  if(!coincidencia) return null;
+  return {
+    origen:textoNormalizado.slice(0,coincidencia.index).trim(),
+    destino:textoNormalizado.slice(coincidencia.index+coincidencia[0].length).trim()
+  };
+}
+
+function extraerDesplazamientoMinutos(textoNormalizado){
+  const cantidadTexto = "(?:\\d+|media|un|una|uno|dos|tres|cuatro|cinco|seis)";
+  const match = textoNormalizado.match(new RegExp(`\\b(${cantidadTexto})\\s*(hora|horas|minuto|minutos)\\s*(mas\\s+tarde|despues|hacia\\s+adelante|antes|mas\\s+temprano)\\b`));
+  if(match){
+    const cantidad = match[1] === "media" ? 0.5 : (NUMEROS[match[1]] ?? Number(match[1]));
+    let valor = match[2].startsWith("hora") ? cantidad*60 : cantidad;
+    if(/antes|temprano/.test(match[3])) valor *= -1;
+    return valor;
+  }
+
+  const accion = textoNormalizado.match(/\b(atras\w*|adelant\w*|corre|correme)\s+(\d+|media|un|una|uno|dos|tres|cuatro|cinco|seis)\s*(hora|horas|minuto|minutos)\b/);
+  if(!accion) return null;
+  const cantidad = accion[2] === "media" ? 0.5 : (NUMEROS[accion[2]] ?? Number(accion[2]));
+  let valor = accion[3].startsWith("hora") ? cantidad*60 : cantidad;
+  if(accion[1].startsWith("adelant")) valor *= -1;
+  return valor;
+}
+
 function prepararModificacion(pedido){
-  const horas = extraerHoras(limpiarCorrecciones(normalizar(pedido.textoOriginal)));
+  const normal = limpiarCorrecciones(normalizar(pedido.textoOriginal));
+  const division = dividirDestinoTemporal(normal);
+  const horas = extraerHoras(normal);
+  const desplazamiento = extraerDesplazamientoMinutos(normal);
   const fechas = fechasMencionadas(pedido.textoOriginal,horas[0]?.hora);
-  let horaOrigen = horas.length > 1 ? horas[0].hora : null;
-  let horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
-  const fechaOrigen = fechas[0]?.fecha || pedido.fecha;
-  const fechaNueva = fechas.length > 1 ? fechas[fechas.length-1].fecha : null;
+  let horaOrigen = null;
+  let horaNueva = null;
+  let fechaOrigen = null;
+  let fechaNueva = null;
+
+  if(division){
+    const horasOrigen = extraerHoras(division.origen);
+    const horasDestino = extraerHoras(division.destino);
+    fechaOrigen = extraerFecha(division.origen,horasOrigen[0]?.hora) || null;
+    fechaNueva = extraerFecha(division.destino,horasDestino[0]?.hora) || null;
+    horaOrigen = horasOrigen.length ? horasOrigen[horasOrigen.length-1].hora : null;
+    horaNueva = horasDestino.length ? horasDestino[horasDestino.length-1].hora : null;
+  }else{
+    fechaOrigen = fechas[0]?.fecha || pedido.fecha;
+    fechaNueva = fechas.length > 1 ? fechas[fechas.length-1].fecha : null;
+    horaOrigen = horas.length > 1 ? horas[0].hora : null;
+    horaNueva = horas.length > 1 ? horas[horas.length-1].hora : pedido.hora;
+  }
+
   let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
   if(fechaOrigen) candidatos = candidatos.filter(x => x.fecha === fechaOrigen);
 
@@ -1686,14 +1739,25 @@ function prepararModificacion(pedido){
     document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Encontré más de un evento parecido.</b><div style="margin-top:12px">${candidatos.map(detalleEvento).join("<hr>")}</div><p>Decime también su horario actual para elegir el correcto.</p><div class="small">No hice ningún cambio.</div></div>`;
     return;
   }
-  if(!horaNueva || (horas.length < 2 && horaNueva === candidatos[0].hora)){
-    document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué nuevo horario querés moverlo?</b><p>${detalleEvento(candidatos[0])}</p></div>`;
+  const original = candidatos[0];
+  if(desplazamiento !== null){
+    const total = minutos(original.hora)+desplazamiento;
+    if(total < 0 || total >= 24*60){
+      document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No pude aplicar ese desplazamiento dentro del mismo día.</b><p>Decime el día y horario final que querés.</p><div class="small">No hice ningún cambio.</div></div>`;
+      return;
+    }
+    horaNueva = aHora(total);
+  }
+
+  const cambiaFecha = Boolean(fechaNueva && fechaNueva !== original.fecha);
+  const cambiaHora = Boolean(horaNueva && horaNueva !== original.hora);
+  if(!cambiaFecha && !cambiaHora){
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿A qué nuevo día u horario querés moverlo?</b><p>${detalleEvento(original)}</p></div>`;
     establecerConversacionPendiente({tipo:"modificar",evento:candidatos[0]});
     return;
   }
 
-  const original = candidatos[0];
-  eventoPendiente = {...original,fecha:fechaNueva || original.fecha,hora:horaNueva,id:original.id,accion:"modificar",idOriginal:original.id};
+  eventoPendiente = {...original,fecha:fechaNueva || original.fecha,hora:horaNueva || original.hora,id:original.id,accion:"modificar",idOriginal:original.id};
   mostrarConfirmacionModificacion(original);
 }
 
