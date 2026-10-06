@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.3.6 — Vos hablá</title>
+<title>Atlas v1.3.7 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.3.6</div>
+    <div class="version">Atlas v1.3.7</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.3.6 — selección conversacional segura al modificar actividades parecidas.
+      Atlas v1.3.7 — consultas por persona y franja horaria más precisas.
     </span>
   </div>
 </section>
@@ -390,8 +390,8 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v136";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v137";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -844,8 +844,8 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
       titulo = "Reunión con la escuela";
     }
 
-    const persona = textoOriginal.match(/(?:reuni[oó]n(?:es)?|me\s+junto|juntarme)(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9:-]+){0,5}?\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para|media|un|una|dos|tres|cuatro|cinco|seis|más|mas|antes|después|despues)\b|[.,;]|$)/i)
-      || textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|durante|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;]|$)/i);
+    const persona = textoOriginal.match(/(?:reuni[oó]n(?:es)?|me\s+junto|juntarme)(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ0-9:-]+){0,5}?\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|que\s+est[aá]|durante|del|de\s+las?|el|la|los|las|este|esta|hoy|mañana|pasado|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?|desde|por|para|media|un|una|dos|tres|cuatro|cinco|seis|más|mas|antes|después|despues)\b|[.,;?!]|$)/i)
+      || textoOriginal.match(/reuni[oó]n\s+con\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]+){0,3}?)(?=\s+(?:\d{1,4}(?:[-/:.]|\b)|de\s+hoy|durante|hoy|mañana|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|a\s+las?)\b|[.,;?!]|$)/i);
     if(persona){
       const nombre = persona[1].replace(/\s+(?:de|del|y)$/i,"").trim();
       if(nombre) titulo = `Reunión con ${nombre}`;
@@ -1649,6 +1649,16 @@ function rangoConsultado(textoOriginal){
   return {inicio,fin};
 }
 
+function limiteHorarioConsultado(textoOriginal){
+  const normal = normalizar(textoOriginal || "");
+  const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const patron = new RegExp(`\\b(antes|despues)\\s+de\\s+(?:las?\\s+)?(${numero})(?:(?:[:.]|\\s+)(\\d{2}))?`);
+  const match = normal.match(patron);
+  if(!match) return null;
+  const hora = convertirHora(NUMEROS[match[2]] ?? Number(match[2]),Number(match[3] || 0),"");
+  return hora ? {tipo:match[1],hora} : null;
+}
+
 function eventosEnIntervalo(fecha,inicio,fin){
   return obtenerAgenda().filter(x => {
     if(fecha && x.fecha !== fecha) return false;
@@ -1674,13 +1684,21 @@ function consultarAgenda(filtro){
   let agenda = obtenerAgenda();
   if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
   const rango = rangoConsultado(filtro.textoOriginal);
+  const limite = limiteHorarioConsultado(filtro.textoOriginal);
   if(rango) agenda = agenda.filter(x => minutos(x.hora) < minutos(rango.fin) && minutos(x.hora)+x.duracion > minutos(rango.inicio));
+  else if(limite?.tipo === "antes") agenda = agenda.filter(x => minutos(x.hora) < minutos(limite.hora));
+  else if(limite?.tipo === "despues") agenda = agenda.filter(x => minutos(x.hora) >= minutos(limite.hora));
   else if(filtro.hora) agenda = agenda.filter(x => minutos(x.hora) <= minutos(filtro.hora) && minutos(x.hora)+x.duracion > minutos(filtro.hora));
   if(filtro.icono !== "📌") agenda = agenda.filter(x => coincideActividad(x,filtro));
   const resultado = document.getElementById("resultado");
 
   if(!agenda.length){
-    resultado.innerHTML = `<div class="c query"><b>No encontré actividades${filtro.fecha ? ` para el ${fechaBonita(filtro.fecha)}` : ""}${rango ? ` entre las ${rango.inicio} y las ${rango.fin}` : filtro.hora ? ` a las ${filtro.hora}` : ""}.</b><div class="small">No hice ningún cambio en tu agenda.</div></div>`;
+    const detalleHorario = rango
+      ? ` entre las ${rango.inicio} y las ${rango.fin}`
+      : limite
+        ? ` ${limite.tipo === "antes" ? "antes" : "después"} de las ${limite.hora}`
+        : filtro.hora ? ` a las ${filtro.hora}` : "";
+    resultado.innerHTML = `<div class="c query"><b>No encontré actividades${filtro.fecha ? ` para el ${fechaBonita(filtro.fecha)}` : ""}${detalleHorario}.</b><div class="small">No hice ningún cambio en tu agenda.</div></div>`;
     return;
   }
 
