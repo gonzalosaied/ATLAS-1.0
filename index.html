@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.5.1 — conversación continua</title>
+<title>Atlas v1.5.2 — memoria conversacional</title>
 
 <style>
 *{box-sizing:border-box}
@@ -318,7 +318,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.5.1</div>
+    <div class="version">Atlas v1.5.2</div>
   </div>
 
   <div class="c">
@@ -418,7 +418,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.5.1 — correcciones naturales y micrófono siempre accesible.
+      Atlas v1.5.2 — memoria activa sobre la última actividad.
     </span>
   </div>
 </section>
@@ -432,9 +432,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v151";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v151";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v152";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v152";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -527,7 +527,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1546,6 +1546,70 @@ function corregirPropuestaPendiente(texto){
   desplazarConversacion();
 }
 
+function extraerAvisoContextual(textoNormalizado){
+  if(/\b(?:el\s+)?dia\s+anterior\b/.test(textoNormalizado)) return 1440;
+  const match = textoNormalizado.match(/\b(\d+|un|una|uno|dos|tres|cuatro|cinco|seis|media)\s*(minuto|minutos|hora|horas)\s+antes\b/);
+  if(!match) return null;
+  const cantidad = match[1] === "media" ? 0.5 : (NUMEROS[match[1]] ?? Number(match[1]));
+  return match[2].startsWith("hora") ? cantidad*60 : cantidad;
+}
+
+function esReferenciaALaUltimaActividad(texto){
+  if(!obtenerEventoContexto()) return false;
+  const normal = normalizar(texto);
+  const referencia = /\b(?:pasala|pasalo|movela|movelo|cambiala|cambialo|modificala|modificalo|eliminala|eliminalo|borrala|borralo|sacala|sacalo|agregale|avisame|mejor|al\s+final|en\s+realidad|que\s+dure)\b/.test(normal);
+  if(!referencia) return false;
+  const actividadExplicita = /\b(?:reunion|turno|dentista|medico|gimnasio|futbol|supermercado|compras|viaje|cumpleanos|clase|trabajo|colectivo|tramite)\b/.test(normal);
+  return !actividadExplicita;
+}
+
+function procesarReferenciaALaUltimaActividad(texto){
+  const original = obtenerEventoContexto();
+  if(!original) return false;
+  const normal = normalizar(texto);
+
+  if(/\b(?:eliminala|eliminalo|borrala|borralo|sacala|sacalo)\b/.test(normal)){
+    mostrarConfirmacionEliminacion(original);
+    return true;
+  }
+
+  const pideAviso = /\b(?:agregale|avisame|aviso|recordame)\b/.test(normal);
+  const avisoNuevo = extraerAvisoContextual(normal);
+  if(pideAviso && avisoNuevo === null){
+    establecerConversacionPendiente({tipo:"avisoContextual",evento:copiarEventoConAvisos(original),falta:"cuándo avisarte"});
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>¿Cuándo querés que te avise?</b>${detalleEvento(original)}<p>Por ejemplo: “15 minutos antes”, “2 horas antes” o “el día anterior”.</p>${botonesConversacion()}</div>`;
+    return true;
+  }
+
+  const horaNueva = extraerHora(normal);
+  const fechaNueva = extraerFecha(normal,horaNueva || original.hora);
+  const duracionNueva = extraerDuracion(normal);
+  const actualizado = copiarEventoConAvisos({
+    ...original,
+    fecha:fechaNueva || original.fecha,
+    hora:horaNueva || original.hora,
+    duracion:duracionNueva || original.duracion
+  });
+
+  if(avisoNuevo !== null){
+    actualizado.avisosMinutos = [...new Set([...normalizarAvisos(original),avisoNuevo])].sort((a,b) => b-a);
+    actualizado.avisoMinutos = actualizado.avisosMinutos[0];
+  }
+
+  const cambio = actualizado.fecha !== original.fecha
+    || actualizado.hora !== original.hora
+    || Number(actualizado.duracion) !== Number(original.duracion)
+    || JSON.stringify(normalizarAvisos(actualizado)) !== JSON.stringify(normalizarAvisos(original));
+  if(!cambio){
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>Sé que hablás de ${escapar(original.titulo)}, pero no identifiqué qué querés cambiar.</b><p>Podés decirme el nuevo día, horario, duración o aviso.</p><div class="small">No hice ningún cambio.</div></div>`;
+    return true;
+  }
+
+  eventoPendiente = {...actualizado,idOriginal:original.id,accion:"modificar"};
+  mostrarConfirmacionModificacion(original);
+  return true;
+}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -1565,6 +1629,10 @@ function ordenar(){
 
   if(esCorreccionDePropuesta(texto)){
     corregirPropuestaPendiente(texto);
+    return;
+  }
+
+  if(esReferenciaALaUltimaActividad(texto) && procesarReferenciaALaUltimaActividad(texto)){
     return;
   }
 
@@ -1832,6 +1900,26 @@ function completarConversacion(respuesta){
   const horasRespuesta = extraerHoras(respuestaNormalizada);
   if(!complemento.hora && horasRespuesta.length){
     complemento.hora = horasRespuesta[horasRespuesta.length-1].hora;
+  }
+
+  if(pendiente.tipo === "avisoContextual"){
+    const avisoNuevo = extraerAvisoContextual(respuestaNormalizada);
+    if(avisoNuevo === null){
+      establecerConversacionPendiente(pendiente);
+      document.getElementById("resultado").innerHTML = `<div class="c info"><b>No llegué a identificar cuándo querés el aviso.</b><p>Decime, por ejemplo: “15 minutos antes”, “2 horas antes” o “el día anterior”.</p>${botonesConversacion()}</div>`;
+      return;
+    }
+    const original = obtenerAgenda().find(x => String(x.id) === String(pendiente.evento.id));
+    if(!original){
+      document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Ya no encontré esa actividad en la agenda.</b><div class="small">No hice ningún cambio.</div></div>`;
+      return;
+    }
+    const actualizado = copiarEventoConAvisos(original);
+    actualizado.avisosMinutos = [...new Set([...normalizarAvisos(original),avisoNuevo])].sort((a,b) => b-a);
+    actualizado.avisoMinutos = actualizado.avisosMinutos[0];
+    eventoPendiente = {...actualizado,idOriginal:original.id,accion:"modificar"};
+    mostrarConfirmacionModificacion(original);
+    return;
   }
 
   if(pendiente.tipo === "elegirEnriquecer"){
