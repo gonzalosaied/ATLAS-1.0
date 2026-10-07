@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.4 — Vos hablá</title>
+<title>Atlas v1.4.1 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.4</div>
+    <div class="version">Atlas v1.4.1</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.4 — primer contexto de copiloto.
+      Atlas v1.4.1 — contexto de copiloto corregido.
     </span>
   </div>
 </section>
@@ -390,9 +390,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v14";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v14";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v141";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v141";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -485,7 +485,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY);
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1277,7 +1277,8 @@ const PREPARACION_CONTEXTUAL = {
 
 function extraerContextoNuevo(texto){
   const normal = normalizar(texto);
-  const lugar = texto.match(/(?:la\s+)?(?:reuni[oó]n|viaje|turno|actividad|evento)\s+(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\s+en\s+(.+?)(?=\s+y\s+(?:voy|vamos|viajo|viajamos)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const lugar = texto.match(/\b(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\s+en\s+(.+?)(?=\s+y\s+(?:voy|vamos|viajo|viajamos)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const referencia = texto.match(/\breuni[oó]n\s+con\s+(.+?)(?=\s+(?:finalmente\s+)?(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\b|[,.;]|$)/i)?.[1]?.trim() || "";
   let transporte = "";
   const transporteDetectado = normal.match(/\b(?:voy|vamos|viajo|viajamos|iremos|vamos\s+a\s+ir)\s+en\s+(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
   if(transporteDetectado){
@@ -1291,7 +1292,7 @@ function extraerContextoNuevo(texto){
     : /\bviaje\b/.test(normal) ? "viaje"
     : /\b(?:turno|dentista|medico)\b/.test(normal) ? "turno"
     : "";
-  return {ubicacion:lugar,transporte,tipo,textoOriginal:texto};
+  return {ubicacion:lugar,transporte,tipo,referencia,textoOriginal:texto};
 }
 
 function eventoCoincideConTipoContextual(evento,tipo){
@@ -1305,9 +1306,15 @@ function eventoCoincideConTipoContextual(evento,tipo){
 
 function candidatosParaContexto(datos){
   const agenda = obtenerAgenda().filter(x => estadoEvento(x).clave !== "finished");
+  let compatibles = agenda.filter(x => eventoCoincideConTipoContextual(x,datos.tipo));
+  if(datos.referencia){
+    const referencia = normalizar(datos.referencia);
+    compatibles = compatibles.filter(x => normalizar(x.titulo).includes(referencia));
+    return compatibles;
+  }
   const ultimo = obtenerEventoContexto();
   if(ultimo && estadoEvento(ultimo).clave !== "finished" && eventoCoincideConTipoContextual(ultimo,datos.tipo)) return [ultimo];
-  return agenda.filter(x => eventoCoincideConTipoContextual(x,datos.tipo));
+  return compatibles;
 }
 
 function prepararEnriquecimientoContextual(datos){
@@ -1325,23 +1332,31 @@ function prepararEnriquecimientoContextual(datos){
 }
 
 function mostrarConfirmacionEnriquecimiento(original,datos){
+  const preparacionAnterior = Array.isArray(original.preparacion) ? [...original.preparacion] : [];
+  const preparacionesDeAuto = Object.values(PREPARACION_CONTEXTUAL);
+  const cambiaDesdeAuto = Boolean(datos.transporte) && original.transporte === "auto" && datos.transporte !== "auto";
+  const preparacionActualizada = cambiaDesdeAuto
+    ? preparacionAnterior.filter(x => !preparacionesDeAuto.includes(x))
+    : preparacionAnterior;
+  const removidas = preparacionAnterior.filter(x => !preparacionActualizada.includes(x));
   const actualizado = copiarEventoConAvisos({
     ...original,
     ubicacion:datos.ubicacion || original.ubicacion || "",
     transporte:datos.transporte || original.transporte || "",
-    preparacion:Array.isArray(original.preparacion) ? [...original.preparacion] : []
+    preparacion:preparacionActualizada
   });
   enriquecimientoPendiente = {
     original:copiarEventoConAvisos(original),
     actualizado,
-    sugerencias:actualizado.transporte === "auto" ? ["combustible","documentacion"] : []
+    sugerencias:actualizado.transporte === "auto" ? ["combustible","documentacion"] : [],
+    removidas
   };
   renderConfirmacionEnriquecimiento();
 }
 
 function renderConfirmacionEnriquecimiento(){
   if(!enriquecimientoPendiente) return;
-  const {original,actualizado,sugerencias} = enriquecimientoPendiente;
+  const {original,actualizado,sugerencias,removidas} = enriquecimientoPendiente;
   const botones = sugerencias.map(clave => {
     const etiqueta = PREPARACION_CONTEXTUAL[clave];
     const elegido = actualizado.preparacion.includes(etiqueta);
@@ -1353,6 +1368,7 @@ function renderConfirmacionEnriquecimiento(){
       <p><b>Antes:</b></p>${detalleEvento(original)}
       <hr><p><b>Con el nuevo contexto:</b></p>${detalleEvento(actualizado)}
     </div>
+    ${removidas.length ? `<div class="c warn"><b>El traslado cambió y estas preparaciones ya no corresponden:</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">Las quitaré solamente si confirmás la actualización.</div></div>` : ""}
     ${sugerencias.length ? `<div class="c query"><b>Como vas en auto, quizá te ayude preparar esto:</b><p class="small">Elegí solamente lo que te resulte útil.</p>${botones}</div>` : ""}
     <div class="c success">
       <b>No voy a crear otro evento.</b>
