@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.1 — acompañamiento proactivo</title>
+<title>Atlas v1.6.2 — acompañamiento proactivo</title>
 
 <style>
 *{box-sizing:border-box}
@@ -304,6 +304,11 @@ hr{
 .reminder-picker button.selected{background:#2563eb;color:#fff;border-color:#60a5fa}
 .last-action{display:flex;gap:10px;align-items:center}
 .last-action .check{font-size:22px;color:#4ade80}
+.section-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.section-title-row h2{margin:0}
+.compact-button{width:auto;margin:0;padding:9px 12px}
+.event-actions{display:flex;gap:8px;margin-top:10px}
+.event-actions button{flex:1;margin:0}
 </style>
 </head>
 
@@ -318,7 +323,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.1</div>
+    <div class="version">Atlas v1.6.2</div>
   </div>
 
   <div class="c">
@@ -338,7 +343,10 @@ hr{
 </section>
 
 <section id="k" class="p">
-  <h2>Kai</h2>
+  <div class="section-title-row">
+    <h2>Kai</h2>
+    <button class="secondary compact-button" onclick="nuevoChat()">＋ Nuevo chat</button>
+  </div>
 
   <div class="hero">
     <b>🎙️ Decime qué necesitás</b>
@@ -418,7 +426,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.1 — viajes y preparación médica corregidos.
+      Atlas v1.6.2 — contexto editable, eliminación directa y conversaciones nuevas.
     </span>
   </div>
 </section>
@@ -432,9 +440,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v161";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v161";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v162";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v162";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v161","atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -527,7 +535,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v161") || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1486,6 +1494,7 @@ function extraerContextoNuevo(texto){
   const llevar = texto.match(/\b(?:tengo\s+que|debo)\s+llevar\s+(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
   const olvidar = texto.match(/\bno\s+me\s+tengo\s+que\s+olvidar\s+(?:de\s+)?(?:llevar\s+)?(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
   if(llevar || olvidar) preparacion = `llevar ${llevar || olvidar}`;
+  const quitarPreparacion = normal.match(/\b(?:quita|quitar|saca|sacar|elimina|eliminar|borra|borrar|no\s+(?:necesito|tengo\s+que)\s+llevar)\s+(?:de\s+)?(?:la\s+|el\s+|los\s+|las\s+)?(.+?)(?=\s+de\s+la\s+preparacion|\s+del?\s+(?:viaje|reunion|turno)|[.,;]|$)/i)?.[1]?.trim() || "";
   let transporte = "";
   const transporteDetectado = normal.match(/\b(?:voy|vamos|viajo|viajamos|iremos|vamos\s+a\s+ir)\s+en\s+(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
   if(transporteDetectado){
@@ -1494,12 +1503,37 @@ function extraerContextoNuevo(texto){
   }else if(/\b(?:voy|vamos|viajo|viajamos)\s+(?:a\s+pie|caminando)\b/.test(normal)){
     transporte = "a pie";
   }
-  if(!lugar && !transporte && !preparacion && !duracion) return null;
+  if(!lugar && !transporte && !preparacion && !quitarPreparacion && !duracion) return null;
   const tipo = /\breunion\b/.test(normal) ? "reunion"
     : /\bviaje\b/.test(normal) ? "viaje"
     : /\b(?:turno|dentista|medico)\b/.test(normal) ? "turno"
     : "";
-  return {ubicacion:lugar,transporte,preparacion,duracion,tipo,referencia,textoOriginal:texto};
+  return {ubicacion:lugar,transporte,preparacion,quitarPreparacion,duracion,tipo,referencia,textoOriginal:texto};
+}
+
+function limpiarNombrePreparacion(texto){
+  return normalizar(texto)
+    .replace(/^llevar\s+/,"")
+    .replace(/^(?:un|una|unos|unas|el|la|los|las|mi|mis|tu|tus)\s+/,"")
+    .trim();
+}
+
+function quitarDePreparacion(lista,objetivo){
+  const buscado = limpiarNombrePreparacion(objetivo);
+  const resultado = [];
+  let encontro = false;
+  for(const entrada of lista){
+    const contenido = String(entrada).replace(/^\s*llevar\s+/i,"");
+    const partes = contenido.split(/\s*,\s*|\s+y\s+/i).map(x => x.trim()).filter(Boolean);
+    const restantes = partes.filter(parte => {
+      const actual = limpiarNombrePreparacion(parte);
+      const coincide = actual.includes(buscado) || buscado.includes(actual);
+      if(coincide) encontro = true;
+      return !coincide;
+    });
+    if(restantes.length) resultado.push(`llevar ${restantes.join(", ")}`);
+  }
+  return {lista:resultado,encontro};
 }
 
 function eventoCoincideConTipoContextual(evento,tipo){
@@ -1545,10 +1579,21 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
   const preparacionActualizada = cambiaDesdeAuto
     ? preparacionAnterior.filter(x => !preparacionesDeAuto.includes(x))
     : preparacionAnterior;
-  const removidas = preparacionAnterior.filter(x => !preparacionActualizada.includes(x));
-  const preparacionConDato = datos.preparacion && !preparacionActualizada.some(x => normalizar(x) === normalizar(datos.preparacion))
-    ? [...preparacionActualizada,datos.preparacion]
-    : preparacionActualizada;
+  const eliminacionSolicitada = datos.quitarPreparacion
+    ? quitarDePreparacion(preparacionActualizada,datos.quitarPreparacion)
+    : {lista:preparacionActualizada,encontro:false};
+  if(datos.quitarPreparacion && !eliminacionSolicitada.encontro){
+    enriquecimientoPendiente = null;
+    recordarEventoContexto(original.id);
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>No encontré “${escapar(datos.quitarPreparacion)}” en la preparación de ${escapar(original.titulo)}.</b>${detalleEvento(original)}<div class="small">No hice ningún cambio.</div></div>`;
+    desplazarConversacion();
+    return;
+  }
+  const preparacionBase = eliminacionSolicitada.lista;
+  const preparacionConDato = datos.preparacion && !preparacionBase.some(x => normalizar(x) === normalizar(datos.preparacion))
+    ? [...preparacionBase,datos.preparacion]
+    : preparacionBase;
+  const removidas = preparacionAnterior.filter(x => !preparacionConDato.includes(x));
   const actualizado = copiarEventoConAvisos({
     ...original,
     modalidad:datos.modalidad || original.modalidad || "",
@@ -1573,14 +1618,15 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
     original:copiarEventoConAvisos(original),
     actualizado,
     sugerencias:actualizado.transporte === "auto" ? ["combustible","documentacion"] : [],
-    removidas
+    removidas,
+    quitarPreparacion:datos.quitarPreparacion || ""
   };
   renderConfirmacionEnriquecimiento();
 }
 
 function renderConfirmacionEnriquecimiento(){
   if(!enriquecimientoPendiente) return;
-  const {original,actualizado,sugerencias,removidas} = enriquecimientoPendiente;
+  const {original,actualizado,sugerencias,removidas,quitarPreparacion} = enriquecimientoPendiente;
   const botones = sugerencias.map(clave => {
     const etiqueta = PREPARACION_CONTEXTUAL[clave];
     const elegido = actualizado.preparacion.includes(etiqueta);
@@ -1593,13 +1639,14 @@ function renderConfirmacionEnriquecimiento(){
   if(Number(original.duracion) !== Number(actualizado.duracion)) cambios.push(`Duración: ${Number(original.duracion)} → ${Number(actualizado.duracion)} minutos`);
   const agregadas = actualizado.preparacion.filter(x => !(original.preparacion || []).some(y => normalizar(y) === normalizar(x)));
   if(agregadas.length) cambios.push(`Preparar: ${agregadas.map(escapar).join(", ")}`);
+  if(quitarPreparacion) cambios.push(`Quitar de la preparación: ${escapar(quitarPreparacion)}`);
   document.getElementById("resultado").innerHTML = `
     <div class="c info">
       <b>Entendí el cambio para ${escapar(original.titulo)}.</b>
       ${cambios.length ? `<p class="small">${cambios.map(x => `• ${x}`).join("<br>")}</p>` : ""}
       ${detalleEvento(actualizado)}
     </div>
-    ${removidas.length ? `<div class="c warn"><b>El traslado cambió y estas preparaciones ya no corresponden:</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">Las quitaré solamente si confirmás la actualización.</div></div>` : ""}
+    ${removidas.length ? `<div class="c warn"><b>${quitarPreparacion ? "Voy a actualizar la preparación:" : "El traslado cambió y estas preparaciones ya no corresponden:"}</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">El cambio se aplicará solamente si confirmás la actualización.</div></div>` : ""}
     ${sugerencias.length ? `<div class="c query"><b>Como vas en auto, quizá te ayude preparar esto:</b><p class="small">Elegí solamente lo que te resulte útil.</p>${botones}</div>` : ""}
     <div class="c success">
       <b>No voy a crear otro evento.</b>
@@ -1692,6 +1739,7 @@ function extraerAvisoContextual(textoNormalizado){
 function esReferenciaALaUltimaActividad(texto){
   if(!obtenerEventoContexto()) return false;
   const normal = normalizar(texto);
+  if(/\bno\s+(?:necesito|tengo\s+que)\s+llevar\b/.test(normal) || /\b(?:quita|saca|elimina|borra)\b.+\bpreparacion\b/.test(normal)) return false;
   const referencia = /\b(?:pasala|pasalo|movela|movelo|cambiala|cambialo|modificala|modificalo|eliminala|eliminalo|borrala|borralo|sacala|sacalo|agregale|avisame|mejor|al\s+final|en\s+realidad|que\s+dure)\b/.test(normal);
   if(!referencia) return false;
   const actividadExplicita = /\b(?:reunion|turno|dentista|medico|gimnasio|futbol|supermercado|compras|viaje|cumpleanos|clase|trabajo|colectivo|tramite)\b/.test(normal);
@@ -2202,6 +2250,7 @@ function coincideActividad(evento,filtro){
   if(b === "reunion") return a === "reunion" || a.startsWith("reunion con ");
 
   return a.includes(b) || b.includes(a) ||
+    (/\b(?:viaje|viajar|viajo|viajamos|viaja)\b/.test(a) && /\b(?:viaje|viajar|viajo|viajamos|viaja)\b/.test(b)) ||
     (a.includes("futbol") && b.includes("futbol")) ||
     (a.includes("gimnasio") && /gimnasio|gym/.test(b));
 }
@@ -2444,6 +2493,9 @@ function confirmarModificacion(){
 function prepararEliminacion(pedido){
   let candidatos = obtenerAgenda().filter(x => coincideActividad(x,pedido));
   const textoPedido = normalizar(pedido.textoOriginal || "");
+  // Si el usuario identifica un evento únicamente por día y horario, esos
+  // datos deben bastar aunque el título provenga de una versión anterior.
+  if(!candidatos.length && (pedido.fecha || pedido.hora)) candidatos = obtenerAgenda();
   const incluyePasados = Boolean(pedido.fecha) || /\b(finalizad[oa]s?|pasad[oa]s?|anterior(?:es)?|historial)\b/.test(textoPedido);
   if(!incluyePasados) candidatos = candidatos.filter(x => estadoEvento(x).clave !== "finished");
   if(pedido.fecha) candidatos = candidatos.filter(x => x.fecha === pedido.fecha);
@@ -2807,7 +2859,33 @@ function irHoyAgenda(){
 
 function tarjetaAgenda(evento){
   const estado = estadoEvento(evento);
-  return `<div class="c event-card ${estado.clave}">${detalleEvento(evento)}${estado.clave !== "finished" ? `<button class="secondary" onclick="probarAviso(${evento.id})">Probar aviso</button>` : ""}</div>`;
+  return `<div class="c event-card ${estado.clave}">${detalleEvento(evento)}<div class="event-actions">${estado.clave !== "finished" ? `<button class="secondary" onclick="probarAviso(${JSON.stringify(evento.id)})">Probar aviso</button>` : ""}<button class="secondary danger" onclick="solicitarEliminacionDesdeAgenda(${JSON.stringify(evento.id)})">Eliminar</button></div></div>`;
+}
+
+function solicitarEliminacionDesdeAgenda(id){
+  const evento = obtenerAgenda().find(x => String(x.id) === String(id));
+  if(!evento) return;
+  recordarEventoContexto(evento.id);
+  mostrarConfirmacionEliminacion(evento);
+  s("k","nk");
+  desplazarConversacion();
+}
+
+function nuevoChat(){
+  eventoPendiente = null;
+  eventosPendientes = [];
+  movimientoConflictoPendiente = null;
+  enriquecimientoPendiente = null;
+  ultimaAccion = null;
+  establecerConversacionPendiente(null);
+  document.getElementById("entrada").value = "";
+  document.getElementById("resultado").innerHTML = "";
+  document.getElementById("chatHistory").innerHTML = `<div class="chat-row kai"><div class="chat-avatar">✦</div><div class="chat-bubble">Hola, soy Kai. Empezamos una conversación nueva. Tu agenda y toda la información guardada siguen intactas.</div></div>`;
+  document.getElementById("noticeTitle").innerText = "Nuevo chat";
+  document.getElementById("noticeText").innerText = "Limpié la conversación. No borré ningún dato.";
+  const aviso = document.getElementById("notice");
+  aviso.classList.add("show");
+  setTimeout(() => aviso.classList.remove("show"),3500);
 }
 
 function agendaSeparada(eventos){
