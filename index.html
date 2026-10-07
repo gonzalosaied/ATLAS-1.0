@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.5.2 — memoria conversacional</title>
+<title>Atlas v1.6 — acompañamiento proactivo</title>
 
 <style>
 *{box-sizing:border-box}
@@ -318,7 +318,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.5.2</div>
+    <div class="version">Atlas v1.6</div>
   </div>
 
   <div class="c">
@@ -418,7 +418,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.5.2 — memoria activa sobre la última actividad.
+      Atlas v1.6 — preguntas útiles y consultas semanales precisas.
     </span>
   </div>
 </section>
@@ -432,9 +432,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v152";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v152";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v16";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v16";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -527,7 +527,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1202,6 +1202,7 @@ function detalleEvento(evento){
         <div class="event-title">${escapar(evento.titulo)}</div>
         <div>${mayuscula(fechaBonita(evento.fecha))} · ${evento.hora}–${fin}</div>
         ${evento.motivo ? `<div class="small"><b>Motivo:</b> ${escapar(evento.motivo)}</div>` : ""}
+        ${evento.modalidad ? `<div class="small"><b>💬 Modalidad:</b> ${escapar(evento.modalidad)}</div>` : ""}
         ${evento.ubicacion ? `<div class="small"><b>📍 Ubicación:</b> ${escapar(evento.ubicacion)}</div>` : ""}
         ${evento.transporte ? `<div class="small"><b>🚘 Traslado:</b> ${escapar(evento.transporte)}</div>` : ""}
         ${Array.isArray(evento.preparacion) && evento.preparacion.length ? `<div class="small"><b>✓ Preparar:</b> ${evento.preparacion.map(escapar).join(", ")}</div>` : ""}
@@ -1306,6 +1307,7 @@ function mismaActividad(a,b){
 function esRespuestaAlPendiente(texto,pendiente){
   const normal = normalizar(texto);
   if(/\b(cancelar|cancela|dejalo|deja eso|olvidalo)\b/.test(normal)) return "cancelar";
+  if(pendiente?.tipo === "proactivo") return "respuesta";
   const complemento = interpretar(texto);
   const cambiaActividad = complemento.icono !== "📌" && !mismaActividad(pendiente.evento,complemento);
   if(!/\b(mejor|en realidad|quise decir|pero)\b/.test(normal) && (cambiaActividad || (/\b(agendame|agenda|crear|crea|eliminar|borra|consultar|que tengo)\b/.test(normal) && complemento.icono !== "📌"))){
@@ -1338,6 +1340,123 @@ function establecerConversacionPendiente(valor){
 
 function botonesConversacion(){
   return `<div class="small" style="margin-top:10px">Escribí la respuesta en el campo de abajo o tocá el micrófono. También podés decir “cancelá”.</div>`;
+}
+
+function tipoAcompanamientoProactivo(evento){
+  const titulo = normalizar(evento?.titulo || "");
+  if(titulo === "reunion" || titulo.startsWith("reunion con ")) return "reunion";
+  if(/turno.*(?:medico|dentista)|dentista|medico/.test(titulo)) return "medico";
+  if(/\bviaje|viajar\b/.test(titulo)) return "viaje";
+  return "";
+}
+
+function respuestaCierraAcompanamiento(textoNormalizado){
+  return /^(?:no|nada|listo|eso es todo|con eso esta bien|dejalo asi|no gracias)\b/.test(textoNormalizado);
+}
+
+function renderPreguntaProactiva(pendiente,pregunta,ayuda="Podés responder directamente o decir “con eso está bien”."){
+  establecerConversacionPendiente(pendiente);
+  document.getElementById("resultado").innerHTML = `<div class="c success"><b>✓ La actividad ya está guardada.</b>${detalleEvento(pendiente.evento)}</div><div class="c query"><b>${escapar(pregunta)}</b><div class="small" style="margin-top:8px">${escapar(ayuda)}</div>${botonesConversacion()}</div>`;
+  desplazarConversacion();
+}
+
+function iniciarAcompanamientoProactivo(evento){
+  const tipo = tipoAcompanamientoProactivo(evento);
+  if(!tipo) return false;
+  const base = {tipo:"proactivo",evento:copiarEventoConAvisos(evento),datos:{},clase:tipo};
+  if(tipo === "reunion"){
+    renderPreguntaProactiva({...base,paso:"reunion_modalidad"},"¿La reunión es presencial o virtual?");
+  }else if(tipo === "medico"){
+    renderPreguntaProactiva({...base,paso:"medico_preparacion"},"¿Tenés que llevar estudios, una orden o alguna documentación?");
+  }else{
+    renderPreguntaProactiva({...base,paso:"viaje_transporte"},"¿Cómo vas a viajar?", "Por ejemplo: en auto, colectivo, micro o avión. También podés decir “todavía no sé”.");
+  }
+  ultimaAccion = `Guardé ${evento.titulo}.`;
+  return true;
+}
+
+function transporteDesdeRespuesta(textoNormalizado){
+  const encontrado = textoNormalizado.match(/\b(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
+  if(encontrado){
+    const equivalencias = {coche:"auto",bondi:"colectivo",micro:"colectivo",bici:"bicicleta",avion:"avión"};
+    return equivalencias[encontrado] || encontrado;
+  }
+  if(/\b(?:a pie|caminando)\b/.test(textoNormalizado)) return "a pie";
+  return "";
+}
+
+function finalizarAcompanamientoSinDatos(evento){
+  recordarEventoContexto(evento.id);
+  registrarAccionCompletada(`Guardé ${evento.titulo}.`,`<div class="c success"><b>Perfecto, con eso está bien.</b>${detalleEvento(evento)}<div class="small">No agregué nada más.</div></div>`);
+}
+
+function confirmarDatosDelAcompanamiento(pendiente){
+  const original = obtenerAgenda().find(x => String(x.id) === String(pendiente.evento.id));
+  if(!original){
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Ya no encontré esa actividad en la agenda.</b><div class="small">No hice ningún cambio.</div></div>`;
+    return;
+  }
+  mostrarConfirmacionEnriquecimiento(original,pendiente.datos);
+}
+
+function completarAcompanamientoProactivo(respuesta,pendiente){
+  const normal = normalizar(respuesta);
+  if(respuestaCierraAcompanamiento(normal) || /\b(?:todavia no se|no lo se|no se)\b/.test(normal)){
+    finalizarAcompanamientoSinDatos(pendiente.evento);
+    return;
+  }
+
+  if(pendiente.paso === "reunion_modalidad"){
+    if(/\bvirtual|videollamada|online\b/.test(normal)){
+      pendiente.datos.modalidad = "virtual";
+      confirmarDatosDelAcompanamiento(pendiente);
+      return;
+    }
+    if(/\bpresencial\b/.test(normal)){
+      pendiente.datos.modalidad = "presencial";
+      renderPreguntaProactiva({...pendiente,paso:"reunion_ubicacion"},"¿Dónde es la reunión?");
+      return;
+    }
+    renderPreguntaProactiva(pendiente,"No llegué a identificarlo. ¿Es presencial o virtual?");
+    return;
+  }
+
+  if(pendiente.paso === "reunion_ubicacion"){
+    const lugar = respuesta.replace(/^\s*(?:es\s+)?en\s+/i,"").trim();
+    if(lugar) pendiente.datos.ubicacion = lugar;
+    renderPreguntaProactiva({...pendiente,paso:"reunion_transporte"},"¿Cómo vas a ir?", "Por ejemplo: en auto, colectivo, taxi o a pie.");
+    return;
+  }
+
+  if(pendiente.paso === "reunion_transporte" || pendiente.paso === "viaje_transporte"){
+    const transporte = transporteDesdeRespuesta(normal);
+    if(!transporte){
+      renderPreguntaProactiva(pendiente,"No llegué a identificar el medio de transporte. ¿Cómo vas a ir?", "Podés decir auto, colectivo, micro, avión, taxi o a pie.");
+      return;
+    }
+    pendiente.datos.transporte = transporte;
+    confirmarDatosDelAcompanamiento(pendiente);
+    return;
+  }
+
+  if(pendiente.paso === "medico_preparacion"){
+    const elementos = [];
+    if(/\bestudio/.test(normal)) elementos.push("estudios");
+    if(/\borden\b/.test(normal)) elementos.push("orden médica");
+    if(/\b(?:documentacion|documento|dni|credencial)\b/.test(normal)) elementos.push("documentación");
+    if(!elementos.length && /^(?:si|sí)\b/.test(normal)){
+      renderPreguntaProactiva({...pendiente,paso:"medico_detalle"},"¿Qué necesitás llevar?");
+      return;
+    }
+    pendiente.datos.preparacion = elementos.length ? `llevar ${elementos.join(", ")}` : `llevar ${respuesta.trim()}`;
+    confirmarDatosDelAcompanamiento(pendiente);
+    return;
+  }
+
+  if(pendiente.paso === "medico_detalle"){
+    pendiente.datos.preparacion = `llevar ${respuesta.replace(/^\s*(?:tengo\s+que\s+)?llevar\s+/i,"").trim()}`;
+    confirmarDatosDelAcompanamiento(pendiente);
+  }
 }
 
 const PREPARACION_CONTEXTUAL = {
@@ -1419,12 +1538,14 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
     : preparacionActualizada;
   const actualizado = copiarEventoConAvisos({
     ...original,
+    modalidad:datos.modalidad || original.modalidad || "",
     ubicacion:datos.ubicacion || original.ubicacion || "",
     transporte:datos.transporte || original.transporte || "",
     duracion:datos.duracion || original.duracion,
     preparacion:preparacionConDato
   });
-  const sinCambios = (original.ubicacion || "") === (actualizado.ubicacion || "")
+  const sinCambios = (original.modalidad || "") === (actualizado.modalidad || "")
+    && (original.ubicacion || "") === (actualizado.ubicacion || "")
     && (original.transporte || "") === (actualizado.transporte || "")
     && Number(original.duracion) === Number(actualizado.duracion)
     && JSON.stringify(preparacionAnterior.map(normalizar).sort()) === JSON.stringify(actualizado.preparacion.map(normalizar).sort());
@@ -1453,6 +1574,7 @@ function renderConfirmacionEnriquecimiento(){
     return `<button type="button" class="option ${elegido ? "selected" : ""}" onclick="alternarPreparacionContextual('${clave}')">${elegido ? "✓ " : "+ "}${mayuscula(etiqueta)}</button>`;
   }).join("");
   const cambios = [];
+  if((original.modalidad || "") !== (actualizado.modalidad || "")) cambios.push(`Modalidad: ${escapar(original.modalidad || "sin definir")} → ${escapar(actualizado.modalidad || "sin definir")}`);
   if((original.ubicacion || "") !== (actualizado.ubicacion || "")) cambios.push(`Ubicación: ${escapar(original.ubicacion || "sin definir")} → ${escapar(actualizado.ubicacion || "sin definir")}`);
   if((original.transporte || "") !== (actualizado.transporte || "")) cambios.push(`Traslado: ${escapar(original.transporte || "sin definir")} → ${escapar(actualizado.transporte || "sin definir")}`);
   if(Number(original.duracion) !== Number(actualizado.duracion)) cambios.push(`Duración: ${Number(original.duracion)} → ${Number(actualizado.duracion)} minutos`);
@@ -1902,6 +2024,11 @@ function completarConversacion(respuesta){
     complemento.hora = horasRespuesta[horasRespuesta.length-1].hora;
   }
 
+  if(pendiente.tipo === "proactivo"){
+    completarAcompanamientoProactivo(respuesta,pendiente);
+    return;
+  }
+
   if(pendiente.tipo === "avisoContextual"){
     const avisoNuevo = extraerAvisoContextual(respuestaNormalizada);
     if(avisoNuevo === null){
@@ -2109,9 +2236,31 @@ function consultarDisponibilidad(filtro){
     : `<div class="c success"><b>✓ Estás libre.</b><p>El ${fechaBonita(filtro.fecha)}, entre las ${filtro.hora} y las ${fin}, no tenés actividades agendadas.</p><div class="small">No creé ningún evento.</div></div>`;
 }
 
+function rangoSemanalConsultado(textoOriginal){
+  const normal = normalizar(textoOriginal || "");
+  let desplazamiento = null;
+  let etiqueta = "";
+  if(/\b(?:la\s+)?semana\s+que\s+viene\b|\bproxima\s+semana\b/.test(normal)){
+    desplazamiento = 7;
+    etiqueta = "la semana que viene";
+  }else if(/\b(?:esta|la)\s+semana\b|\bsemana\s+actual\b/.test(normal)){
+    desplazamiento = 0;
+    etiqueta = "esta semana";
+  }
+  if(desplazamiento === null) return null;
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const diasDesdeLunes = (hoy.getDay()+6)%7;
+  const inicio = sumarDias(hoy,-diasDesdeLunes+desplazamiento);
+  const fin = sumarDias(inicio,6);
+  return {inicio:fechaLocalISO(inicio),fin:fechaLocalISO(fin),etiqueta};
+}
+
 function consultarAgenda(filtro){
   let agenda = obtenerAgenda();
-  if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
+  const semana = rangoSemanalConsultado(filtro.textoOriginal);
+  if(semana) agenda = agenda.filter(x => x.fecha >= semana.inicio && x.fecha <= semana.fin);
+  else if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
   const rango = rangoConsultado(filtro.textoOriginal);
   const limite = limiteHorarioConsultado(filtro.textoOriginal);
   if(rango) agenda = agenda.filter(x => minutos(x.hora) < minutos(rango.fin) && minutos(x.hora)+x.duracion > minutos(rango.inicio));
@@ -2127,11 +2276,12 @@ function consultarAgenda(filtro){
       : limite
         ? ` ${limite.tipo === "antes" ? "antes" : "después"} de las ${limite.hora}`
         : filtro.hora ? ` a las ${filtro.hora}` : "";
-    resultado.innerHTML = `<div class="c query"><b>No encontré actividades${filtro.fecha ? ` para el ${fechaBonita(filtro.fecha)}` : ""}${detalleHorario}.</b><div class="small">No hice ningún cambio en tu agenda.</div></div>`;
+    resultado.innerHTML = `<div class="c query"><b>No encontré actividades${semana ? ` para ${semana.etiqueta}` : filtro.fecha ? ` para el ${fechaBonita(filtro.fecha)}` : ""}${detalleHorario}.</b><div class="small">No hice ningún cambio en tu agenda.</div></div>`;
     return;
   }
 
-  resultado.innerHTML = `<div class="c query"><b>📅 Esto figura en tu agenda</b><div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
 function fechasMencionadas(texto,hora){
@@ -2544,22 +2694,24 @@ async function guardarConPermiso(){
   const guardado = {...eventoPendiente};
   eventoPendiente = null;
 
-  registrarAccionCompletada(`Guardé ${guardado.titulo}.`,`
-    <div class="c success">
-      <b>✓ Listo, lo guardé</b>
-      <div style="margin-top:12px">
-        ${detalleEvento(guardado)}
+  if(!iniciarAcompanamientoProactivo(guardado)){
+    registrarAccionCompletada(`Guardé ${guardado.titulo}.`,`
+      <div class="c success">
+        <b>✓ Listo, lo guardé</b>
+        <div style="margin-top:12px">
+          ${detalleEvento(guardado)}
+        </div>
+
+        <button class="secondary" onclick="probarAviso(${guardado.id})">
+          Probar ahora cómo será el aviso
+        </button>
+
+        <button class="primary" onclick="abrirAgenda()">
+          Ver en mi agenda
+        </button>
       </div>
-
-      <button class="secondary" onclick="probarAviso(${guardado.id})">
-        Probar ahora cómo será el aviso
-      </button>
-
-      <button class="primary" onclick="abrirAgenda()">
-        Ver en mi agenda
-      </button>
-    </div>
-  `);
+    `);
+  }
 
   renderAgenda();
   actualizarProximo();
