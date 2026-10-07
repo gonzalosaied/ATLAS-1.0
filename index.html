@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.4.2 — Vos hablá</title>
+<title>Atlas v1.5 — Kai conversacional</title>
 
 <style>
 *{box-sizing:border-box}
@@ -114,6 +114,30 @@ textarea{
 
 .conversation-context.show{display:block}
 .conversation-context b{color:#fff}
+
+.chat-history{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin:0 0 14px;
+}
+
+.chat-row{display:flex;align-items:flex-end;gap:8px}
+.chat-row.user{justify-content:flex-end}
+.chat-avatar{
+  width:30px;height:30px;border-radius:50%;flex:0 0 30px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#2563eb,#7c3aed);
+  font-size:15px;
+}
+.chat-bubble{
+  max-width:86%;padding:11px 13px;border-radius:16px;
+  background:#1f2937;border:1px solid #334155;line-height:1.45;
+}
+.chat-row.user .chat-bubble{background:#2563eb;border-color:#3b82f6}
+.chat-row.archived .chat-bubble{width:100%;max-width:calc(100% - 38px);padding:8px 10px}
+.chat-row.archived .c{margin:5px 0;background:transparent;border-width:0 0 0 3px;border-radius:0;padding:8px}
+.chat-row.archived button,.chat-row.archived .reminder-picker{display:none}
 
 button{cursor:pointer}
 
@@ -286,7 +310,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.4.2</div>
+    <div class="version">Atlas v1.5</div>
   </div>
 
   <div class="c">
@@ -320,6 +344,13 @@ hr{
       Tocá el micrófono para hablar
     </div>
     <div id="micHelp" class="small mic-help"></div>
+  </div>
+
+  <div id="chatHistory" class="chat-history">
+    <div class="chat-row kai">
+      <div class="chat-avatar">✦</div>
+      <div class="chat-bubble">Hola, soy Kai. Contame qué necesitás organizar. También puedo relacionar nueva información con algo que ya tenés guardado.</div>
+    </div>
   </div>
 
   <textarea
@@ -376,7 +407,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.4.2 — contexto, preparaciones y duración corregidos.
+      Atlas v1.5 — primera experiencia conversacional de Kai.
     </span>
   </div>
 </section>
@@ -390,9 +421,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v142";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v142";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v15";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v15";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -485,7 +516,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1218,9 +1249,37 @@ function toggleAviso(valor){
   mostrarRevision();
 }
 
+function agregarMensajeUsuario(texto){
+  const historial = document.getElementById("chatHistory");
+  if(!historial) return;
+  const fila = document.createElement("div");
+  fila.className = "chat-row user";
+  const burbuja = document.createElement("div");
+  burbuja.className = "chat-bubble";
+  burbuja.textContent = texto;
+  fila.appendChild(burbuja);
+  historial.appendChild(fila);
+}
+
+function archivarRespuestaActual(){
+  const historial = document.getElementById("chatHistory");
+  const resultado = document.getElementById("resultado");
+  if(!historial || !resultado || !resultado.innerHTML.trim()) return;
+  const fila = document.createElement("div");
+  fila.className = "chat-row kai archived";
+  fila.innerHTML = `<div class="chat-avatar">✦</div><div class="chat-bubble">${resultado.innerHTML}</div>`;
+  historial.appendChild(fila);
+  resultado.innerHTML = "";
+}
+
+function desplazarConversacion(){
+  setTimeout(() => window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"}),30);
+}
+
 function registrarAccionCompletada(resumen,html){
   ultimaAccion = resumen;
   document.getElementById("resultado").innerHTML = html;
+  desplazarConversacion();
 }
 
 function compactarResultado(){
@@ -1354,6 +1413,17 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
     duracion:datos.duracion || original.duracion,
     preparacion:preparacionConDato
   });
+  const sinCambios = (original.ubicacion || "") === (actualizado.ubicacion || "")
+    && (original.transporte || "") === (actualizado.transporte || "")
+    && Number(original.duracion) === Number(actualizado.duracion)
+    && JSON.stringify(preparacionAnterior.map(normalizar).sort()) === JSON.stringify(actualizado.preparacion.map(normalizar).sort());
+  if(sinCambios){
+    enriquecimientoPendiente = null;
+    recordarEventoContexto(original.id);
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>Eso ya estaba anotado para ${escapar(original.titulo)}.</b><p class="small">No hice ningún cambio ni creé otro evento.</p></div>`;
+    desplazarConversacion();
+    return;
+  }
   enriquecimientoPendiente = {
     original:copiarEventoConAvisos(original),
     actualizado,
@@ -1371,20 +1441,27 @@ function renderConfirmacionEnriquecimiento(){
     const elegido = actualizado.preparacion.includes(etiqueta);
     return `<button type="button" class="option ${elegido ? "selected" : ""}" onclick="alternarPreparacionContextual('${clave}')">${elegido ? "✓ " : "+ "}${mayuscula(etiqueta)}</button>`;
   }).join("");
+  const cambios = [];
+  if((original.ubicacion || "") !== (actualizado.ubicacion || "")) cambios.push(`Ubicación: ${escapar(original.ubicacion || "sin definir")} → ${escapar(actualizado.ubicacion || "sin definir")}`);
+  if((original.transporte || "") !== (actualizado.transporte || "")) cambios.push(`Traslado: ${escapar(original.transporte || "sin definir")} → ${escapar(actualizado.transporte || "sin definir")}`);
+  if(Number(original.duracion) !== Number(actualizado.duracion)) cambios.push(`Duración: ${Number(original.duracion)} → ${Number(actualizado.duracion)} minutos`);
+  const agregadas = actualizado.preparacion.filter(x => !(original.preparacion || []).some(y => normalizar(y) === normalizar(x)));
+  if(agregadas.length) cambios.push(`Preparar: ${agregadas.map(escapar).join(", ")}`);
   document.getElementById("resultado").innerHTML = `
     <div class="c info">
-      <b>Entendí que esta información pertenece al mismo evento</b>
-      <p><b>Antes:</b></p>${detalleEvento(original)}
-      <hr><p><b>Con el nuevo contexto:</b></p>${detalleEvento(actualizado)}
+      <b>Entendí el cambio para ${escapar(original.titulo)}.</b>
+      ${cambios.length ? `<p class="small">${cambios.map(x => `• ${x}`).join("<br>")}</p>` : ""}
+      ${detalleEvento(actualizado)}
     </div>
     ${removidas.length ? `<div class="c warn"><b>El traslado cambió y estas preparaciones ya no corresponden:</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">Las quitaré solamente si confirmás la actualización.</div></div>` : ""}
     ${sugerencias.length ? `<div class="c query"><b>Como vas en auto, quizá te ayude preparar esto:</b><p class="small">Elegí solamente lo que te resulte útil.</p>${botones}</div>` : ""}
     <div class="c success">
       <b>No voy a crear otro evento.</b>
-      <p>¿Querés que actualice ${escapar(original.titulo)} con esta información?</p>
-      <button class="primary" onclick="confirmarEnriquecimientoContextual()">Sí, actualizar el evento</button>
-      <button class="secondary" onclick="cancelar()">No, cancelar</button>
+      <p>¿Lo actualizo?</p>
+      <button class="primary" onclick="confirmarEnriquecimientoContextual()">Sí, actualizar</button>
+      <button class="secondary" onclick="cancelar()">No, dejar como está</button>
     </div>`;
+  desplazarConversacion();
 }
 
 function alternarPreparacionContextual(clave){
@@ -1403,7 +1480,7 @@ function confirmarEnriquecimientoContextual(){
   guardarAgenda(obtenerAgenda().map(x => String(x.id) === String(actualizado.id) ? actualizado : x));
   recordarEventoContexto(actualizado.id);
   enriquecimientoPendiente = null;
-  registrarAccionCompletada(`Actualicé el contexto de ${actualizado.titulo}.`,`<div class="c success"><b>✓ Listo, enriquecí el evento</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`);
+  registrarAccionCompletada(`Actualicé el contexto de ${actualizado.titulo}.`,`<div class="c success"><b>Listo. Actualicé ${escapar(actualizado.titulo)} y mantuve el resto como estaba.</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`);
   renderAgenda();
   actualizarProximo();
 }
@@ -1419,8 +1496,11 @@ function ordenar(){
     return;
   }
 
+  archivarRespuestaActual();
+  agregarMensajeUsuario(texto);
   ultimaAccion = null;
   entrada.value = "";
+  desplazarConversacion();
 
   if(conversacionPendiente){
     const tipoMensaje = esRespuestaAlPendiente(texto,conversacionPendiente);
