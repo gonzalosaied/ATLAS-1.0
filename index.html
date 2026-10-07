@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.5 — Kai conversacional</title>
+<title>Atlas v1.5.1 — conversación continua</title>
 
 <style>
 *{box-sizing:border-box}
@@ -138,6 +138,14 @@ textarea{
 .chat-row.archived .chat-bubble{width:100%;max-width:calc(100% - 38px);padding:8px 10px}
 .chat-row.archived .c{margin:5px 0;background:transparent;border-width:0 0 0 3px;border-radius:0;padding:8px}
 .chat-row.archived button,.chat-row.archived .reminder-picker{display:none}
+
+.composer-actions{display:flex;gap:10px;align-items:stretch;margin-top:10px}
+.composer-actions .primary{margin-top:0;flex:1}
+.mic-inline{
+  width:52px;flex:0 0 52px;border:1px solid #475569;border-radius:12px;
+  background:#1e293b;color:#fff;font-size:22px;margin:0;
+}
+.mic-inline.listening{background:#dc2626;box-shadow:0 0 0 5px #dc262633}
 
 button{cursor:pointer}
 
@@ -310,7 +318,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.5</div>
+    <div class="version">Atlas v1.5.1</div>
   </div>
 
   <div class="c">
@@ -360,7 +368,10 @@ hr{
 
   <div id="conversationContext" class="conversation-context"></div>
 
-  <button class="primary" onclick="ordenar()">Enviar a Kai</button>
+  <div class="composer-actions">
+    <button id="micButtonBottom" class="mic-inline" onclick="escuchar()" aria-label="Hablar con Kai">🎙️</button>
+    <button class="primary" onclick="ordenar()">Enviar a Kai</button>
+  </div>
 
   <div id="resultado"></div>
 </section>
@@ -407,7 +418,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.5 — primera experiencia conversacional de Kai.
+      Atlas v1.5.1 — correcciones naturales y micrófono siempre accesible.
     </span>
   </div>
 </section>
@@ -421,9 +432,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v15";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v15";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v151";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v151";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -516,7 +527,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -563,7 +574,7 @@ function escuchar(){
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   const estado = document.getElementById("vozEstado");
-  const boton = document.getElementById("micButton");
+  const botones = [document.getElementById("micButton"),document.getElementById("micButtonBottom")].filter(Boolean);
   const ayuda = document.getElementById("micHelp");
   ayuda.classList.remove("show");
   ayuda.innerHTML = "";
@@ -586,7 +597,7 @@ function escuchar(){
 
   reconocimiento.onstart = () => {
     escuchando = true;
-    boton.classList.add("listening");
+    botones.forEach(boton => boton.classList.add("listening"));
     estado.innerText = "Te escucho…";
   };
 
@@ -613,7 +624,7 @@ function escuchar(){
 
   reconocimiento.onend = () => {
     escuchando = false;
-    boton.classList.remove("listening");
+    botones.forEach(boton => boton.classList.remove("listening"));
   };
 
   reconocimiento.start();
@@ -1485,6 +1496,56 @@ function confirmarEnriquecimientoContextual(){
   actualizarProximo();
 }
 
+function esCorreccionDePropuesta(texto){
+  if(!eventoPendiente || eventoPendiente.accion === "eliminar") return false;
+  const normal = normalizar(texto);
+  const marcaCorreccion = /\b(no\s+mejor|mejor|en realidad|quise decir|cambialo|cambiala|que dure|avisame)\b/.test(normal);
+  if(!marcaCorreccion) return false;
+  return Boolean(extraerHora(normal) || extraerFecha(normal,extraerHora(normal)) || extraerDuracion(normal) || /\bdia anterior\b/.test(normal) || /\bcon\s+[a-z]/.test(normal));
+}
+
+function corregirPropuestaPendiente(texto){
+  const normal = normalizar(texto);
+  const horaNueva = extraerHora(normal);
+  const fechaNueva = extraerFecha(normal,horaNueva || eventoPendiente.hora);
+  const duracionNueva = extraerDuracion(normal);
+  const cambios = [];
+
+  if(horaNueva && horaNueva !== eventoPendiente.hora){
+    cambios.push(`horario ${eventoPendiente.hora} → ${horaNueva}`);
+    eventoPendiente.hora = horaNueva;
+  }
+  if(fechaNueva && fechaNueva !== eventoPendiente.fecha){
+    cambios.push(`día ${fechaBonita(eventoPendiente.fecha)} → ${fechaBonita(fechaNueva)}`);
+    eventoPendiente.fecha = fechaNueva;
+  }
+  if(duracionNueva && duracionNueva !== eventoPendiente.duracion){
+    cambios.push(`duración ${eventoPendiente.duracion} → ${duracionNueva} minutos`);
+    eventoPendiente.duracion = duracionNueva;
+  }
+  if(/\bdia anterior\b/.test(normal) && !normalizarAvisos(eventoPendiente).includes(1440)){
+    eventoPendiente.avisosMinutos = [...normalizarAvisos(eventoPendiente),1440].sort((a,b) => b-a);
+    eventoPendiente.avisoMinutos = eventoPendiente.avisosMinutos[0];
+    cambios.push("aviso el día anterior");
+  }
+  const persona = texto.match(/\b(?:en\s+realidad\s+)?(?:es\s+)?con\s+([\p{L}]+(?:\s+[\p{L}]+)?)/iu)?.[1]?.trim();
+  if(persona && /^reuni[oó]n\s+con\s+/i.test(eventoPendiente.titulo)){
+    const tituloNuevo = `Reunión con ${persona}`;
+    if(normalizar(tituloNuevo) !== normalizar(eventoPendiente.titulo)){
+      cambios.push(`título ${eventoPendiente.titulo} → ${tituloNuevo}`);
+      eventoPendiente.titulo = tituloNuevo;
+    }
+  }
+
+  if(!cambios.length){
+    document.getElementById("resultado").innerHTML = `<div class="c info"><b>No encontré un cambio concreto en la propuesta.</b><p>Podés decirme, por ejemplo, “mejor a las 12” o “que dure media hora”.</p><div class="small">No modifiqué ni guardé nada.</div></div>`;
+    return;
+  }
+  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Perfecto, corregí la misma propuesta.</b><p class="small">${cambios.map(x => `• ${escapar(x)}`).join("<br>")}</p></div>`;
+  mostrarRevision();
+  desplazarConversacion();
+}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -1501,6 +1562,11 @@ function ordenar(){
   ultimaAccion = null;
   entrada.value = "";
   desplazarConversacion();
+
+  if(esCorreccionDePropuesta(texto)){
+    corregirPropuestaPendiente(texto);
+    return;
+  }
 
   if(conversacionPendiente){
     const tipoMensaje = esRespuestaAlPendiente(texto,conversacionPendiente);
