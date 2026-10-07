@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.4.1 — Vos hablá</title>
+<title>Atlas v1.4.2 — Vos hablá</title>
 
 <style>
 *{box-sizing:border-box}
@@ -286,7 +286,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.4.1</div>
+    <div class="version">Atlas v1.4.2</div>
   </div>
 
   <div class="c">
@@ -376,7 +376,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.4.1 — contexto de copiloto corregido.
+      Atlas v1.4.2 — contexto, preparaciones y duración corregidos.
     </span>
   </div>
 </section>
@@ -390,9 +390,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v141";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v141";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v142";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v142";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -485,7 +485,7 @@ function recordarEventoContexto(id){
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1278,7 +1278,12 @@ const PREPARACION_CONTEXTUAL = {
 function extraerContextoNuevo(texto){
   const normal = normalizar(texto);
   const lugar = texto.match(/\b(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\s+en\s+(.+?)(?=\s+y\s+(?:voy|vamos|viajo|viajamos)\b|[,.;]|$)/i)?.[1]?.trim() || "";
-  const referencia = texto.match(/\breuni[oó]n\s+con\s+(.+?)(?=\s+(?:finalmente\s+)?(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const referencia = texto.match(/\breuni[oó]n\s+con\s+(.+?)(?=\s+(?:finalmente\s+)?(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser|va\s+a\s+durar|dura|tengo\s+que\s+llevar|debo\s+llevar|no\s+me\s+tengo\s+que\s+olvidar)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const duracion = extraerDuracion(normal);
+  let preparacion = "";
+  const llevar = texto.match(/\b(?:tengo\s+que|debo)\s+llevar\s+(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
+  const olvidar = texto.match(/\bno\s+me\s+tengo\s+que\s+olvidar\s+(?:de\s+)?(?:llevar\s+)?(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
+  if(llevar || olvidar) preparacion = `llevar ${llevar || olvidar}`;
   let transporte = "";
   const transporteDetectado = normal.match(/\b(?:voy|vamos|viajo|viajamos|iremos|vamos\s+a\s+ir)\s+en\s+(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
   if(transporteDetectado){
@@ -1287,12 +1292,12 @@ function extraerContextoNuevo(texto){
   }else if(/\b(?:voy|vamos|viajo|viajamos)\s+(?:a\s+pie|caminando)\b/.test(normal)){
     transporte = "a pie";
   }
-  if(!lugar && !transporte) return null;
+  if(!lugar && !transporte && !preparacion && !duracion) return null;
   const tipo = /\breunion\b/.test(normal) ? "reunion"
     : /\bviaje\b/.test(normal) ? "viaje"
     : /\b(?:turno|dentista|medico)\b/.test(normal) ? "turno"
     : "";
-  return {ubicacion:lugar,transporte,tipo,referencia,textoOriginal:texto};
+  return {ubicacion:lugar,transporte,preparacion,duracion,tipo,referencia,textoOriginal:texto};
 }
 
 function eventoCoincideConTipoContextual(evento,tipo){
@@ -1339,11 +1344,15 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
     ? preparacionAnterior.filter(x => !preparacionesDeAuto.includes(x))
     : preparacionAnterior;
   const removidas = preparacionAnterior.filter(x => !preparacionActualizada.includes(x));
+  const preparacionConDato = datos.preparacion && !preparacionActualizada.some(x => normalizar(x) === normalizar(datos.preparacion))
+    ? [...preparacionActualizada,datos.preparacion]
+    : preparacionActualizada;
   const actualizado = copiarEventoConAvisos({
     ...original,
     ubicacion:datos.ubicacion || original.ubicacion || "",
     transporte:datos.transporte || original.transporte || "",
-    preparacion:preparacionActualizada
+    duracion:datos.duracion || original.duracion,
+    preparacion:preparacionConDato
   });
   enriquecimientoPendiente = {
     original:copiarEventoConAvisos(original),
