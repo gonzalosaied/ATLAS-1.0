@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.2 — acompañamiento proactivo</title>
+<title>Atlas v1.6.3 — acceso rápido y contexto seguro</title>
 
 <style>
 *{box-sizing:border-box}
@@ -309,6 +309,9 @@ hr{
 .compact-button{width:auto;margin:0;padding:9px 12px}
 .event-actions{display:flex;gap:8px;margin-top:10px}
 .event-actions button{flex:1;margin:0}
+.home-kai-quick{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);width:min(688px,calc(100% - 24px));display:flex;gap:8px;align-items:center;padding:10px;background:#111827f2;border:1px solid #334155;border-radius:18px;box-shadow:0 12px 35px #0008;z-index:9;backdrop-filter:blur(10px)}
+.home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
+.home-kai-quick button{width:auto;margin:0;padding:12px 14px}
 </style>
 </head>
 
@@ -323,7 +326,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.2</div>
+    <div class="version">Atlas v1.6.3</div>
   </div>
 
   <div class="c">
@@ -339,6 +342,12 @@ hr{
   <div class="c" id="proximoEvento">
     📅 <b>Próximo</b><br>
     <span class="small">Todavía no hay eventos guardados.</span>
+  </div>
+
+  <div class="home-kai-quick" aria-label="Acceso rápido a Kai">
+    <input id="homeEntrada" type="text" placeholder="¿En qué te puedo ayudar?" onkeydown="if(event.key === 'Enter') enviarDesdeHome()">
+    <button class="secondary" onclick="escucharDesdeHome()" aria-label="Hablar con Kai">🎙️</button>
+    <button class="primary" onclick="enviarDesdeHome()" aria-label="Enviar a Kai">➤</button>
   </div>
 </section>
 
@@ -426,7 +435,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.2 — contexto editable, eliminación directa y conversaciones nuevas.
+      Atlas v1.6.3 — acceso rápido a Kai y contexto conversacional seguro.
     </span>
   </div>
 </section>
@@ -440,9 +449,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v162";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v162";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v161","atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v163";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v163";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v162","atlas_agenda_v161","atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -534,8 +543,12 @@ function recordarEventoContexto(id){
   localStorage.setItem(CONTEXT_EVENT_KEY,String(id));
 }
 
+function olvidarEventoContexto(){
+  [CONTEXT_EVENT_KEY,"atlas_context_event_v162","atlas_context_event_v161","atlas_context_event_v16","atlas_context_event_v152","atlas_context_event_v151","atlas_context_event_v15","atlas_context_event_v142","atlas_context_event_v141","atlas_context_event_v14"].forEach(clave => localStorage.removeItem(clave));
+}
+
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v161") || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v162") || localStorage.getItem("atlas_context_event_v161") || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -1835,12 +1848,18 @@ function ordenar(){
 
   eventoPendiente = null;
   eventosPendientes = [];
+  const normalEntrada = normalizar(texto);
+  const accionGeneral = clasificarIntencion(normalEntrada);
+  const editaPreparacion = /\bpreparacion\b/.test(normalEntrada) || /\bno\s+(?:necesito|tengo\s+que)\s+llevar\b/.test(normalEntrada);
+  if(accionGeneral === "eliminar" && !editaPreparacion){
+    prepararEliminacion(interpretar(texto));
+    return;
+  }
   const contextoNuevo = extraerContextoNuevo(texto);
   if(contextoNuevo){
     prepararEnriquecimientoContextual(contextoNuevo);
     return;
   }
-  const accionGeneral = clasificarIntencion(normalizar(texto));
   if(!["consultar","disponibilidad","modificar","eliminar","clima"].includes(accionGeneral)){
     const multiples = interpretarMultiples(texto);
     if(multiples.length > 1){
@@ -2878,6 +2897,7 @@ function nuevoChat(){
   enriquecimientoPendiente = null;
   ultimaAccion = null;
   establecerConversacionPendiente(null);
+  olvidarEventoContexto();
   document.getElementById("entrada").value = "";
   document.getElementById("resultado").innerHTML = "";
   document.getElementById("chatHistory").innerHTML = `<div class="chat-row kai"><div class="chat-avatar">✦</div><div class="chat-bubble">Hola, soy Kai. Empezamos una conversación nueva. Tu agenda y toda la información guardada siguen intactas.</div></div>`;
@@ -2886,6 +2906,24 @@ function nuevoChat(){
   const aviso = document.getElementById("notice");
   aviso.classList.add("show");
   setTimeout(() => aviso.classList.remove("show"),3500);
+}
+
+function enviarDesdeHome(){
+  const origen = document.getElementById("homeEntrada");
+  const texto = origen.value.trim();
+  if(!texto){
+    origen.focus();
+    return;
+  }
+  origen.value = "";
+  s("k","nk");
+  document.getElementById("entrada").value = texto;
+  ordenar();
+}
+
+function escucharDesdeHome(){
+  s("k","nk");
+  escuchar();
 }
 
 function agendaSeparada(eventos){
