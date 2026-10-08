@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.3 — acceso rápido y contexto seguro</title>
+<title>Atlas v1.6.4 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -435,7 +435,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.3 — acceso rápido a Kai y contexto conversacional seguro.
+      Atlas v1.6.4 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -449,9 +449,9 @@ hr{
 </nav>
 
 <script>
-const STORAGE_KEY = "atlas_agenda_v163";
-const CONTEXT_EVENT_KEY = "atlas_context_event_v163";
-const OLD_STORAGE_KEYS = ["atlas_agenda_v162","atlas_agenda_v161","atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
+const STORAGE_KEY = "atlas_agenda_v164";
+const CONTEXT_EVENT_KEY = "atlas_context_event_v164";
+const OLD_STORAGE_KEYS = ["atlas_agenda_v163","atlas_agenda_v162","atlas_agenda_v161","atlas_agenda_v16","atlas_agenda_v152","atlas_agenda_v151","atlas_agenda_v15","atlas_agenda_v142","atlas_agenda_v141","atlas_agenda_v14","atlas_agenda_v138","atlas_agenda_v137","atlas_agenda_v136","atlas_agenda_v135","atlas_agenda_v134","atlas_agenda_v133","atlas_agenda_v132","atlas_agenda_v131","atlas_agenda_v13","atlas_agenda_v12","atlas_agenda_v11","atlas_agenda_v10","atlas_agenda_v09","atlas_agenda_v08","atlas_agenda_v07","atlas_agenda_v06","atlas_agenda_v05","atlas_agenda_v04"];
 let eventoPendiente = null;
 let conversacionPendiente = null;
 let eventosPendientes = [];
@@ -544,11 +544,11 @@ function recordarEventoContexto(id){
 }
 
 function olvidarEventoContexto(){
-  [CONTEXT_EVENT_KEY,"atlas_context_event_v162","atlas_context_event_v161","atlas_context_event_v16","atlas_context_event_v152","atlas_context_event_v151","atlas_context_event_v15","atlas_context_event_v142","atlas_context_event_v141","atlas_context_event_v14"].forEach(clave => localStorage.removeItem(clave));
+  [CONTEXT_EVENT_KEY,"atlas_context_event_v163","atlas_context_event_v162","atlas_context_event_v161","atlas_context_event_v16","atlas_context_event_v152","atlas_context_event_v151","atlas_context_event_v15","atlas_context_event_v142","atlas_context_event_v141","atlas_context_event_v14"].forEach(clave => localStorage.removeItem(clave));
 }
 
 function obtenerEventoContexto(){
-  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v162") || localStorage.getItem("atlas_context_event_v161") || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
+  const id = localStorage.getItem(CONTEXT_EVENT_KEY) || localStorage.getItem("atlas_context_event_v163") || localStorage.getItem("atlas_context_event_v162") || localStorage.getItem("atlas_context_event_v161") || localStorage.getItem("atlas_context_event_v16") || localStorage.getItem("atlas_context_event_v152") || localStorage.getItem("atlas_context_event_v151") || localStorage.getItem("atlas_context_event_v15") || localStorage.getItem("atlas_context_event_v142") || localStorage.getItem("atlas_context_event_v141") || localStorage.getItem("atlas_context_event_v14");
   if(!id) return null;
   return obtenerAgenda().find(x => String(x.id) === String(id)) || null;
 }
@@ -655,7 +655,7 @@ const NUMEROS = {
   una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,
   nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,
   dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,
-  veintiuna:21,veintiuno:21,veintidos:22,veintitres:23
+  veintiuna:21,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24
 };
 
 function limpiarCorrecciones(texto){
@@ -675,9 +675,11 @@ function limpiarCorrecciones(texto){
 function convertirHora(hora,minuto,periodo){
   let h = Number(hora);
   const m = Number(minuto || 0);
+  if(h === 24 && m === 0) h = 0;
   if(h < 0 || h > 23 || m < 0 || m > 59) return null;
 
-  if(periodo && /(tarde|noche)/.test(periodo) && h < 12) h += 12;
+  if(periodo && /noche/.test(periodo) && h === 12) h = 0;
+  else if(periodo && /(tarde|noche)/.test(periodo) && h < 12) h += 12;
   if(periodo && /madrugada/.test(periodo) && h === 12) h = 0;
   if(periodo && /manana/.test(periodo) && h === 12) h = 0;
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
@@ -687,7 +689,7 @@ function extraerHoras(textoNormalizado){
   const resultados = [];
   const mediodia = textoNormalizado.match(/\b(?:al|del|a\s+las?)\s+mediodia\b/);
   if(mediodia) resultados.push({hora:"12:00",index:mediodia.index,texto:mediodia[0],periodo:"mediodia"});
-  const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres)";
+  const numero = "(?:\\d{1,2}|una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidos|veintitres|veinticuatro)";
   for(const match of textoNormalizado.matchAll(/\b(\d{1,2})[:.](\d{2})\b/g)){
     const hora = convertirHora(Number(match[1]),Number(match[2]),"");
     if(hora) resultados.push({hora,index:match.index,texto:match[0],periodo:""});
@@ -966,7 +968,7 @@ function datosSegunActividad(textoNormalizado, textoOriginal){
   }
 
   if(/\b(viaje|viajar|viajo|viajamos|viaja|viajan)\b/.test(textoNormalizado)){
-    const destino = textoOriginal.match(/\b(?:viaje|viajar|viajo|viajamos|viaja|viajan)\s+(?:hacia\s+|para\s+|a\s+)?(.+?)(?=\s+(?:hoy|mañana|pasado\s+mañana|domingo|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|a\s+las?|al\s+mediod[ií]a|durante|por)\b|[.,;?!]|$)/i)?.[1]?.trim();
+    const destino = textoOriginal.match(/\b(?:viaje|viajar|viajo|viajamos|viaja|viajan)\s+(?:hacia\s+|para\s+|a\s+)?(.+?)(?=\s+(?:(?:para\s+)?(?:el\s+)?)?(?:hoy|mañana|pasado\s+mañana|domingo|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|a\s+las?|al\s+mediod[ií]a|durante|por)\b|[.,;?!]|$)/i)?.[1]?.trim();
     return {
       titulo:destino ? `Viaje a ${destino}` : "Viaje",
       icono:"🧳",
@@ -1501,7 +1503,9 @@ const PREPARACION_CONTEXTUAL = {
 function extraerContextoNuevo(texto){
   const normal = normalizar(texto);
   const lugar = texto.match(/\b(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser)\s+en\s+(.+?)(?=\s+y\s+(?:voy|vamos|viajo|viajamos)\b|[,.;]|$)/i)?.[1]?.trim() || "";
-  const referencia = texto.match(/\breuni[oó]n\s+con\s+(.+?)(?=\s+(?:finalmente\s+)?(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser|va\s+a\s+durar|dura|tengo\s+que\s+llevar|debo\s+llevar|no\s+me\s+tengo\s+que\s+olvidar)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const referenciaReunion = texto.match(/\breuni[oó]n\s+con\s+(.+?)(?=\s+(?:finalmente\s+)?(?:es|ser[aá]|queda|se\s+hace|va\s+a\s+ser|va\s+a\s+durar|dura|tengo\s+que\s+llevar|debo\s+llevar|no\s+me\s+tengo\s+que\s+olvidar)\b|[,.;]|$)/i)?.[1]?.trim() || "";
+  const referenciaViaje = texto.match(/\bviaje\s+(?:a|hacia)\s+(.+?)(?=[,.;]|$)/i)?.[1]?.trim() || "";
+  const referencia = referenciaReunion || referenciaViaje;
   const duracion = extraerDuracion(normal);
   let preparacion = "";
   const llevar = texto.match(/\b(?:tengo\s+que|debo)\s+llevar\s+(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
@@ -1565,6 +1569,10 @@ function candidatosParaContexto(datos){
     const referencia = normalizar(datos.referencia);
     compatibles = compatibles.filter(x => normalizar(x.titulo).includes(referencia));
     return compatibles;
+  }
+  if(datos.quitarPreparacion){
+    const conEseDato = compatibles.filter(x => quitarDePreparacion(Array.isArray(x.preparacion) ? x.preparacion : [],datos.quitarPreparacion).encontro);
+    if(conEseDato.length) compatibles = conEseDato;
   }
   const ultimo = obtenerEventoContexto();
   if(ultimo && estadoEvento(ultimo).clave !== "finished" && eventoCoincideConTipoContextual(ultimo,datos.tipo)) return [ultimo];
@@ -1659,7 +1667,9 @@ function renderConfirmacionEnriquecimiento(){
       ${cambios.length ? `<p class="small">${cambios.map(x => `• ${x}`).join("<br>")}</p>` : ""}
       ${detalleEvento(actualizado)}
     </div>
-    ${removidas.length ? `<div class="c warn"><b>${quitarPreparacion ? "Voy a actualizar la preparación:" : "El traslado cambió y estas preparaciones ya no corresponden:"}</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">El cambio se aplicará solamente si confirmás la actualización.</div></div>` : ""}
+    ${removidas.length ? (quitarPreparacion
+      ? `<div class="c warn"><b>La preparación quedará así:</b><p>${actualizado.preparacion.length ? actualizado.preparacion.map(escapar).join(", ") : "Sin elementos pendientes"}.</p><div class="small">El cambio se aplicará solamente si confirmás la actualización.</div></div>`
+      : `<div class="c warn"><b>El traslado cambió y estas preparaciones ya no corresponden:</b><p>${removidas.map(escapar).join(", ")}.</p><div class="small">El cambio se aplicará solamente si confirmás la actualización.</div></div>`) : ""}
     ${sugerencias.length ? `<div class="c query"><b>Como vas en auto, quizá te ayude preparar esto:</b><p class="small">Elegí solamente lo que te resulte útil.</p>${botones}</div>` : ""}
     <div class="c success">
       <b>No voy a crear otro evento.</b>
@@ -2362,6 +2372,7 @@ function consultarAgenda(filtro){
   }
 
   agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  if(agenda.length === 1) recordarEventoContexto(agenda[0].id);
   resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
