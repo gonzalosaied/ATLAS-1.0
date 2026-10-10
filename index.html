@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.1 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -312,6 +312,12 @@ hr{
 .home-kai-quick{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);width:min(688px,calc(100% - 24px));display:flex;gap:8px;align-items:center;padding:10px;background:#111827f2;border:1px solid #334155;border-radius:18px;box-shadow:0 12px 35px #0008;z-index:9;backdrop-filter:blur(10px)}
 .home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
 .home-kai-quick button{width:auto;margin:0;padding:12px 14px}
+
+/* Atlas 1.6.5.1: navegación cómoda en conversaciones largas */
+.kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
+.jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
+.jump-latest.visible{display:block}
+
 </style>
 </head>
 
@@ -326,7 +332,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5</div>
+    <div class="version">Atlas v1.6.5.1</div>
   </div>
 
   <div class="c">
@@ -352,7 +358,7 @@ hr{
 </section>
 
 <section id="k" class="p">
-  <div class="section-title-row">
+  <div class="section-title-row kai-sticky-header">
     <h2>Kai</h2>
     <button class="secondary compact-button" onclick="nuevoChat()">＋ Nuevo chat</button>
   </div>
@@ -371,6 +377,7 @@ hr{
     <div id="micHelp" class="small mic-help"></div>
   </div>
 
+  <button id="volverAbajo" class="jump-latest" onclick="irAlUltimoMensaje()" aria-label="Ir al último mensaje" title="Ir al último mensaje">↓</button>
   <div id="chatHistory" class="chat-history">
     <div class="chat-row kai">
       <div class="chat-avatar">✦</div>
@@ -435,7 +442,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.1 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -475,6 +482,7 @@ function s(id, navId){
 
   document.getElementById(navId).classList.add("active");
 
+  actualizarBotonUltimoMensaje();
   if(id === "g"){
     fechaAgenda = fechaLocalISO(new Date());
     renderAgenda();
@@ -1322,6 +1330,19 @@ function archivarRespuestaActual(){
   resultado.innerHTML = "";
 }
 
+function irAlUltimoMensaje(){
+  window.scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"});
+}
+function actualizarBotonUltimoMensaje(){
+  const boton = document.getElementById("volverAbajo");
+  if(!boton) return;
+  const enKai = document.getElementById("k").classList.contains("a");
+  const distancia = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+  boton.classList.toggle("visible",enKai && distancia > 360);
+}
+window.addEventListener("scroll",actualizarBotonUltimoMensaje,{passive:true});
+window.addEventListener("resize",actualizarBotonUltimoMensaje);
+
 function desplazarConversacion(){
   setTimeout(() => window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"}),30);
 }
@@ -1841,14 +1862,29 @@ function ordenar(){
   entrada.value = "";
   desplazarConversacion();
 
-  const confirmacionNatural = /^(?:si[, ]+)?(?:perfecto[, ]+)?(?:guarda(?:la|lo)?(?: asi)?|guardalo(?: asi)?|guardala(?: asi)?|confirmo|confirmar|si,? guard(?:a|alo|ala)(?: .*?)?|dale,? guard(?:a|alo|ala)(?: .*?)?)\s*[.!]*$/i.test(normalizar(texto));
-  if(eventoPendiente && eventoPendiente.accion === "crear" && confirmacionNatural && !conversacionPendiente){
-    guardarConPermiso();
+  // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
+  // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
+  const n = normalizar(texto).replace(/[.!?]+$/g,"").trim();
+  const rechazoPendiente = /^(?:no[, ]*)?(?:mejor )?(?:dejalo|dejala|dejarlo|dejarla) (?:como estaba|como esta|asi)|^(?:no[, ]*)?(?:cancela|cancelar|descarta|descartar)(?: (?:el|la|este|esta))? (?:cambio|modificacion|propuesta)(?: de (?:horario|hora|fecha))?(?: del? .+)?$|^(?:no[, ]*)?(?:cancelalo|cancelala|olvidalo|olvidala|no cambies nada)$/i.test(n);
+  if(rechazoPendiente && (eventoPendiente || conversacionPendiente || movimientoConflictoPendiente || enriquecimientoPendiente)){
+    cancelar();
     return;
   }
-  if(eventoPendiente && eventoPendiente.accion === "modificar" && confirmacionNatural && !conversacionPendiente){
-    confirmarModificacion();
-    return;
+  const confirmacionNatural = /^(?:si[, ]+|dale[, ]+|perfecto[, ]+|ok[, ]+|listo[, ]+)?(?:guarda(?:la|lo)?(?: asi)?|guardalo(?: asi)?|guardala(?: asi)?|confirmo|confirmar|cambialo|cambiala|modificalo|modificala|modifica|modificar|hace(?:lo|la)|aplica(?:lo|la)?|dejalo asi|dejala asi)(?:[ ,]+(?:asi|por favor))?$/i.test(n);
+  if(eventoPendiente && !conversacionPendiente && confirmacionNatural){
+    if(eventoPendiente.accion === "crear"){
+      guardarConPermiso();
+      return;
+    }
+    if(eventoPendiente.accion === "modificar"){
+      // No aplicar silenciosamente una modificación conflictiva con una frase ambigua.
+      if(buscarConflictos(eventoPendiente).length && !/^(?:si[, ]+)?(?:modificar igualmente|modifica igualmente|acepto el conflicto)$/.test(n)){
+        mostrarConfirmacionModificacion(obtenerAgenda().find(x=>String(x.id)===String(eventoPendiente.idOriginal)));
+        return;
+      }
+      confirmarModificacion();
+      return;
+    }
   }
 
   if(esCorreccionDePropuesta(texto)){
@@ -2541,6 +2577,7 @@ function confirmarModificacion(){
   guardarAgenda(agenda);
   recordarEventoContexto(actualizado.id);
   eventoPendiente = null;
+  establecerConversacionPendiente(null);
   registrarAccionCompletada(`Modifiqué ${actualizado.titulo}.`,`<div class="c success"><b>✓ Listo, modifiqué el evento</b>${detalleEvento(actualizado)}<div class="small">No creé una actividad nueva.</div></div>`);
   renderAgenda(); actualizarProximo();
 }
