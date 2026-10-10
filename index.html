@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.1 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.2 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -138,6 +138,10 @@ textarea{
 .chat-row.archived .chat-bubble{width:100%;max-width:calc(100% - 38px);padding:8px 10px}
 .chat-row.archived .c{margin:5px 0;background:transparent;border-width:0 0 0 3px;border-radius:0;padding:8px}
 .chat-row.archived button,.chat-row.archived .reminder-picker{display:none}
+#resultado .chat-row.kai{margin:12px 0}
+.chat-bubble.kai-text{white-space:pre-line;max-width:min(85%,540px);background:#202c3d;border-color:#34445d}
+.chat-row.archived .chat-bubble.kai-text{width:auto;max-width:min(85%,540px);padding:11px 13px}
+#resultado:empty{display:none}
 
 .composer-actions{display:flex;gap:10px;align-items:stretch;margin-top:10px}
 .composer-actions .primary{margin-top:0;flex:1}
@@ -313,7 +317,7 @@ hr{
 .home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
 .home-kai-quick button{width:auto;margin:0;padding:12px 14px}
 
-/* Atlas 1.6.5.1: navegación cómoda en conversaciones largas */
+/* Atlas 1.6.5.2: navegación cómoda en conversaciones largas */
 .kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
 .jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
 .jump-latest.visible{display:block}
@@ -332,7 +336,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.1</div>
+    <div class="version">Atlas v1.6.5.2</div>
   </div>
 
   <div class="c">
@@ -442,7 +446,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.1 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.2 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -892,6 +896,9 @@ function extraerFecha(textoNormalizado, hora){
 }
 
 function clasificarIntencion(textoNormalizado){
+  // Preguntas naturales tienen prioridad sobre frases informativas.
+  if(/^(?:a que hora|cuando|que dia|en que horario|a que hora es|tengo|hay)\b/.test(textoNormalizado) &&
+     (/[?]$/.test(textoNormalizado) || /^(?:a que hora|cuando|que dia|en que horario)\b/.test(textoNormalizado) || /\b(?:este|el) (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(textoNormalizado) && /^tengo\b/.test(textoNormalizado))) return "consultar";
   if(/\b(clima|tiempo|temperatura|pronostico)\b/.test(textoNormalizado)) return "clima";
   if(/\b(no\s+(?:agendes|agendar|anotes|guardes|crees)|solo\s+quiero\s+saber|estoy\s+libre|tengo\s+libre|hay\s+algo)\b/.test(textoNormalizado)) return "disponibilidad";
   if(/\b(que tengo que llevar|que debo llevar|que necesito llevar|que llevar|preparacion para)\b/.test(textoNormalizado)) return "consultar";
@@ -904,6 +911,14 @@ function clasificarIntencion(textoNormalizado){
 }
 
 function datosSegunActividad(textoNormalizado, textoOriginal){
+  const nombreExplicito = textoOriginal.match(/\b(?:actividad|evento|tarea)\s+llamad[ao]\s+["“]?(.+?)(?=\s+(?:hoy|mañana|pasado mañana|el (?:lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo)|a las?|de \d|para el)\b|[.,;!?]|$)/i);
+  if(nombreExplicito){
+    return {titulo:nombreExplicito[1].trim().replace(/["”]+$/,'').trim(),icono:"📌",duracion:60,motivoAviso:"para que puedas organizarte"};
+  }
+  const actividadGenerica = textoOriginal.match(/\b(?:agend[aá]|anot[aá]|cre[aá])\s+(?:una?\s+)?(?:actividad|evento|tarea)\s+(.+?)(?=\s+(?:hoy|mañana|pasado mañana|el (?:lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo)|a las?)\b|[.,;!?]|$)/i);
+  if(actividadGenerica){
+    return {titulo:actividadGenerica[1].trim(),icono:"📌",duracion:60,motivoAviso:"para que puedas organizarte"};
+  }
   if(textoNormalizado.includes("futbol")){
     const acompanante = textoOriginal.match(/(?:llevar|llevo|llevaré|acompañar|acompanar|acompaño)\s+a\s+([A-Za-zÁÉÍÓÚáéíóúÑñ]+)\s+a(?:l)?\s+f[uú]tbol/i);
     return {
@@ -1319,15 +1334,43 @@ function agregarMensajeUsuario(texto){
   historial.appendChild(fila);
 }
 
+function convertirRespuestaEnBurbuja(){
+  const resultado = document.getElementById("resultado");
+  if(!resultado || !resultado.children.length) return;
+  if(resultado.querySelector("button, input, select, textarea, .reminder-picker")) return;
+  if(resultado.querySelectorAll(".c").length > 2) return;
+  if(resultado.dataset.tipo === "burbuja") return;
+  const bloques = [...resultado.querySelectorAll(".c")];
+  if(!bloques.length) return;
+  const contenido = bloques.map(b => b.innerText.trim()).filter(Boolean).join("\n");
+  if(!contenido) return;
+  resultado.innerHTML = `<div class="chat-row kai"><div class="chat-avatar">✦</div><div class="chat-bubble kai-text"></div></div>`;
+  resultado.querySelector(".kai-text").textContent = contenido;
+  resultado.dataset.tipo = "burbuja";
+}
+function iniciarBurbujasKai(){
+  const resultado = document.getElementById("resultado");
+  if(!resultado) return;
+  const observer = new MutationObserver(() => {
+    if(resultado.dataset.procesando === "si") return;
+    resultado.dataset.procesando = "si";
+    convertirRespuestaEnBurbuja();
+    resultado.dataset.procesando = "no";
+  });
+  observer.observe(resultado,{childList:true,subtree:false});
+}
+document.addEventListener("DOMContentLoaded",iniciarBurbujasKai);
+
 function archivarRespuestaActual(){
   const historial = document.getElementById("chatHistory");
   const resultado = document.getElementById("resultado");
   if(!historial || !resultado || !resultado.innerHTML.trim()) return;
   const fila = document.createElement("div");
   fila.className = "chat-row kai archived";
-  fila.innerHTML = `<div class="chat-avatar">✦</div><div class="chat-bubble">${resultado.innerHTML}</div>`;
+  fila.innerHTML = resultado.dataset.tipo === "burbuja" ? resultado.innerHTML : `<div class="chat-avatar">✦</div><div class="chat-bubble">${resultado.innerHTML}</div>`;
   historial.appendChild(fila);
   resultado.innerHTML = "";
+  delete resultado.dataset.tipo;
 }
 
 function irAlUltimoMensaje(){
@@ -1865,6 +1908,16 @@ function ordenar(){
   // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
   // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
   const n = normalizar(texto).replace(/[.!?]+$/g,"").trim();
+  // Resolver primero la decisión que Kai acaba de presentar.
+  if(eventoPendiente && !conversacionPendiente){
+    const rechaza = /^(?:no(?:,? mejor)?(?:\s+)?(?:conserva|conservar|deja|dejalo|dejala|borres|elimines|lo elimines|la elimines|gracias)?(?:\s+(?:el|la|lo|al|a la)\s+.+)?|mejor no|dejalo como estaba|dejala como estaba|cancela(?:r)?(?:\s+.+)?|conserva(?:\s+.+)?|no hagas nada)$/i.test(n);
+    const confirmaEliminar = /^(?:si[, ]*|dale[, ]*|perfecto[, ]*)?(?:eliminal[oa]|elimina|borrala|borralo|borra|hacelo|hacela|hace eso|confirmo|confirmar|si|dale)(?:[ ,]+(?:por favor|ahora|esa actividad|ese evento))?$/i.test(n);
+    if(eventoPendiente.accion === "eliminar"){
+      if(rechaza){ cancelar(); return; }
+      if(confirmaEliminar){ confirmarEliminacion(); return; }
+    }
+    if(eventoPendiente.accion === "modificar" && rechaza){ cancelar(); return; }
+  }
   const rechazoPendiente = /^(?:no[, ]*)?(?:mejor )?(?:dejalo|dejala|dejarlo|dejarla) (?:como estaba|como esta|asi)|^(?:no[, ]*)?(?:cancela|cancelar|descarta|descartar)(?: (?:el|la|este|esta))? (?:cambio|modificacion|propuesta)(?: de (?:horario|hora|fecha))?(?: del? .+)?$|^(?:no[, ]*)?(?:cancelalo|cancelala|olvidalo|olvidala|no cambies nada)$/i.test(n);
   if(rechazoPendiente && (eventoPendiente || conversacionPendiente || movimientoConflictoPendiente || enriquecimientoPendiente)){
     cancelar();
