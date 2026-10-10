@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.4 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -326,7 +326,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.4</div>
+    <div class="version">Atlas v1.6.5</div>
   </div>
 
   <div class="c">
@@ -435,7 +435,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.4 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -886,6 +886,7 @@ function extraerFecha(textoNormalizado, hora){
 function clasificarIntencion(textoNormalizado){
   if(/\b(clima|tiempo|temperatura|pronostico)\b/.test(textoNormalizado)) return "clima";
   if(/\b(no\s+(?:agendes|agendar|anotes|guardes|crees)|solo\s+quiero\s+saber|estoy\s+libre|tengo\s+libre|hay\s+algo)\b/.test(textoNormalizado)) return "disponibilidad";
+  if(/\b(que tengo que llevar|que debo llevar|que necesito llevar|que llevar|preparacion para)\b/.test(textoNormalizado)) return "consultar";
   if(/\b(que tengo|que tarea|que hay|que dias tengo|que dia tengo|que (?:reuniones?|actividades?|eventos?|turnos?) tengo|cuando tengo|mostrame|mostrar|consultar|cual es|como esta mi agenda|como esta la agenda|agenda de hoy|en mi agenda)\b/.test(textoNormalizado)) return "consultar";
   if(/\b(?:mov\w*|muev\w*|cambi\w*|pas(?:a|ar|ame|alo|ala|arla|arlo|en)?|reprogram\w*|modific\w*|atras\w*|adelant\w*|corre|correme)\b/.test(textoNormalizado)) return "modificar";
   if(/\b(eliminar|elimina|eliminame|borrar|borra|borrame|cancelar|cancela|cancelame|sacar|saca|sacame)\b/.test(textoNormalizado)) return "eliminar";
@@ -1064,6 +1065,7 @@ function interpretar(texto){
     if(fin > inicio && /\b(desde|de)\b/.test(limpio)) duracion = fin-inicio;
   }
 
+  if(/^Reunión con /i.test(actividad.titulo)) actividad.titulo = actividad.titulo.replace(/\s+a$/i, "");
   return {
     id:Date.now(),
     accion:clasificarIntencion(limpio),
@@ -1091,7 +1093,7 @@ function diasRecurrentes(textoNormalizado){
 function generarRecurrencia(evento){
   const limpio = normalizar(evento.textoOriginal);
   const dias = diasRecurrentes(limpio);
-  if((!(/\b(todos|cada)\b/.test(limpio)) && dias.length < 2) || !dias.length || !evento.hora) return [];
+  if(!/\b(todos|todas|cada|semanalmente|todos los|todas las)\b/.test(limpio) || !dias.length || !evento.hora) return [];
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const inicioSerie = evento.fecha ? fechaDesdeISO(evento.fecha) : new Date(hoy);
@@ -1138,7 +1140,9 @@ function interpretarMultiples(texto){
   const mencionesFecha = [...limpio.matchAll(/pasado\s+manana|manana|hoy|(?:el\s+|este\s+|esta\s+)?(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)|(?:el\s+)?\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?|(?:el\s+)?\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+\d{4})?/g)]
     .map(x => ({index:x.index,fecha:extraerFecha(x[0],null)}));
   const eventos = marcadores.map((marca,index) => {
-    const fechaCercana = [...mencionesFecha].reverse().find(x => x.index <= marca.index)?.fecha || fechaGeneral;
+    const siguienteMarca = marcadores[index+1]?.index ?? limpio.length;
+    const fechaEnSegmento = mencionesFecha.find(x => x.index >= marca.index && x.index < siguienteMarca)?.fecha;
+    const fechaCercana = fechaEnSegmento || [...mencionesFecha].reverse().find(x => x.index <= marca.index)?.fecha || fechaGeneral;
     let mejorHora = horas.length === marcadores.length ? {h:horas[index],i:index} : null;
     let mejorDistancia = mejorHora ? Math.abs(mejorHora.h.index-marca.index) : Infinity;
     if(!mejorHora) horas.forEach((h,i) => {
@@ -1787,7 +1791,11 @@ function procesarReferenciaALaUltimaActividad(texto){
     return true;
   }
 
-  const horaNueva = extraerHora(normal);
+  const desplazamiento = extraerDesplazamientoMinutos(normal);
+  const horaNueva = desplazamiento !== null && desplazamiento !== undefined
+    ? ((minutos(original.hora)+desplazamiento >= 0 && minutos(original.hora)+desplazamiento < 1440)
+        ? aHora(minutos(original.hora)+desplazamiento) : null)
+    : extraerHora(normal);
   const fechaNueva = extraerFecha(normal,horaNueva || original.hora);
   const duracionNueva = extraerDuracion(normal);
   const actualizado = copiarEventoConAvisos({
@@ -1833,6 +1841,16 @@ function ordenar(){
   entrada.value = "";
   desplazarConversacion();
 
+  const confirmacionNatural = /^(?:si[, ]+)?(?:perfecto[, ]+)?(?:guarda(?:la|lo)?(?: asi)?|guardalo(?: asi)?|guardala(?: asi)?|confirmo|confirmar|si,? guard(?:a|alo|ala)(?: .*?)?|dale,? guard(?:a|alo|ala)(?: .*?)?)\s*[.!]*$/i.test(normalizar(texto));
+  if(eventoPendiente && eventoPendiente.accion === "crear" && confirmacionNatural && !conversacionPendiente){
+    guardarConPermiso();
+    return;
+  }
+  if(eventoPendiente && eventoPendiente.accion === "modificar" && confirmacionNatural && !conversacionPendiente){
+    confirmarModificacion();
+    return;
+  }
+
   if(esCorreccionDePropuesta(texto)){
     corregirPropuestaPendiente(texto);
     return;
@@ -1865,7 +1883,7 @@ function ordenar(){
     prepararEliminacion(interpretar(texto));
     return;
   }
-  const contextoNuevo = extraerContextoNuevo(texto);
+  const contextoNuevo = accionGeneral === "crear" || accionGeneral === "consultar" || accionGeneral === "disponibilidad" ? null : extraerContextoNuevo(texto);
   if(contextoNuevo){
     prepararEnriquecimientoContextual(contextoNuevo);
     return;
@@ -2373,6 +2391,13 @@ function consultarAgenda(filtro){
 
   agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
   if(agenda.length === 1) recordarEventoContexto(agenda[0].id);
+  const pidePreparacion = /\b(?:que\s+(?:tengo|debo|necesito)\s+que\s+llevar|que\s+llevar|preparacion)\b/.test(normalizar(filtro.textoOriginal || ""));
+  if(pidePreparacion && agenda.length === 1){
+    const e = agenda[0];
+    const items = Array.isArray(e.preparacion) ? e.preparacion : (e.preparacion ? [e.preparacion] : []);
+    resultado.innerHTML = `<div class="c query"><b>Para ${escapar(e.titulo)} tenés que preparar:</b><p>${items.length ? items.map(x => `✓ ${escapar(String(x))}`).join("<br>") : "Todavía no registraste elementos para llevar."}</p><div class="small">Es una consulta: no modifiqué nada.</div></div>`;
+    return;
+  }
   resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
