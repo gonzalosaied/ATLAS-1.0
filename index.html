@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.2 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.3 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -336,7 +336,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.2</div>
+    <div class="version">Atlas v1.6.5.3</div>
   </div>
 
   <div class="c">
@@ -367,25 +367,14 @@ hr{
     <button class="secondary compact-button" onclick="nuevoChat()">＋ Nuevo chat</button>
   </div>
 
-  <div class="hero">
-    <b>🎙️ Decime qué necesitás</b>
-    <div class="small">
-      Podés crear, consultar, modificar o eliminar actividades hablando naturalmente.
-    </div>
-
-    <button id="micButton" class="mic" onclick="escuchar()">🎙️</button>
-
-    <div id="vozEstado" class="small" style="text-align:center">
-      Tocá el micrófono para hablar
-    </div>
-    <div id="micHelp" class="small mic-help"></div>
-  </div>
+  <div id="vozEstado" class="small" role="status" aria-live="polite" style="margin:5px 0"></div>
+  <div id="micHelp" class="small mic-help"></div>
 
   <button id="volverAbajo" class="jump-latest" onclick="irAlUltimoMensaje()" aria-label="Ir al último mensaje" title="Ir al último mensaje">↓</button>
   <div id="chatHistory" class="chat-history">
     <div class="chat-row kai">
       <div class="chat-avatar">✦</div>
-      <div class="chat-bubble">Hola, soy Kai. Contame qué necesitás organizar. También puedo relacionar nueva información con algo que ya tenés guardado.</div>
+      <div class="chat-bubble">¡Buen día, Gonza! ¿En qué te puedo ayudar hoy?</div>
     </div>
   </div>
 
@@ -446,7 +435,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.2 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.3 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1831,7 +1820,7 @@ function esReferenciaALaUltimaActividad(texto){
   if(!obtenerEventoContexto()) return false;
   const normal = normalizar(texto);
   if(/\bno\s+(?:necesito|tengo\s+que)\s+llevar\b/.test(normal) || /\b(?:quita|saca|elimina|borra)\b.+\bpreparacion\b/.test(normal)) return false;
-  const referencia = /\b(?:pasala|pasalo|movela|movelo|cambiala|cambialo|modificala|modificalo|eliminala|eliminalo|borrala|borralo|sacala|sacalo|agregale|avisame|mejor|al\s+final|en\s+realidad|que\s+dure)\b/.test(normal);
+  const referencia = /\b(?:pasala|pasalo|paso|pasar(?:lo|la)?|movela|movelo|cambiala|cambialo|modificala|modificalo|eliminala|eliminalo|borrala|borralo|sacala|sacalo|agregale|avisame|mejor|al\s+final|en\s+realidad|que\s+dure)\b/.test(normal);
   if(!referencia) return false;
   const actividadExplicita = /\b(?:reunion|turno|dentista|medico|gimnasio|futbol|supermercado|compras|viaje|cumpleanos|clase|trabajo|colectivo|tramite)\b/.test(normal);
   return !actividadExplicita;
@@ -1905,6 +1894,18 @@ function ordenar(){
   entrada.value = "";
   desplazarConversacion();
 
+  // Resolver conversación general sin convertirla en un evento.
+  const conversacionNormal = normalizar(texto).replace(/[.!?]+$/g,"").trim();
+  if(/(?:de que|que) (?:estabamos|veniamos) hablando|que hablamos recien|te acordas de que hablabamos/.test(conversacionNormal)){
+    const pendiente = eventoPendiente;
+    const ultimo = obtenerEventoContexto();
+    const asunto = pendiente || ultimo;
+    resultado.innerHTML = asunto
+      ? `<div class="c info">Estábamos hablando de ${escapar(asunto.titulo)}${pendiente ? ", y hay un cambio pendiente de tu confirmación" : ""}. ¿Querés seguir con eso?</div>`
+      : `<div class="c info">En este chat todavía no tengo una actividad concreta como referencia. Contame qué querés retomar.</div>`;
+    return;
+  }
+
   // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
   // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
   const n = normalizar(texto).replace(/[.!?]+$/g,"").trim();
@@ -1923,7 +1924,7 @@ function ordenar(){
     cancelar();
     return;
   }
-  const confirmacionNatural = /^(?:si[, ]+|dale[, ]+|perfecto[, ]+|ok[, ]+|listo[, ]+)?(?:guarda(?:la|lo)?(?: asi)?|guardalo(?: asi)?|guardala(?: asi)?|confirmo|confirmar|cambialo|cambiala|modificalo|modificala|modifica|modificar|hace(?:lo|la)|aplica(?:lo|la)?|dejalo asi|dejala asi)(?:[ ,]+(?:asi|por favor))?$/i.test(n);
+  const confirmacionNatural = /^(?:si[, ]+|dale[, ]+|perfecto[, ]+|ok[, ]+|listo[, ]+)?(?:guarda(?:la|lo)?(?: asi)?|guardalo(?: asi)?|guardala(?: asi)?|confirmo|confirmar|cambialo|cambiala|modificalo|modificala|modifica|modificar|hace(?:lo|la)|aplica(?:lo|la)?|dejalo asi|dejala asi|dejalo a esa hora|dejala a esa hora|dejalo en ese horario|dejala en ese horario|asi esta bien|me sirve ese horario|esta perfecto asi|perfecto dejalo a esa hora)(?:[ ,]+(?:asi|por favor))?$/i.test(n);
   if(eventoPendiente && !conversacionPendiente && confirmacionNatural){
     if(eventoPendiente.accion === "crear"){
       guardarConPermiso();
@@ -2487,6 +2488,12 @@ function consultarAgenda(filtro){
     resultado.innerHTML = `<div class="c query"><b>Para ${escapar(e.titulo)} tenés que preparar:</b><p>${items.length ? items.map(x => `✓ ${escapar(String(x))}`).join("<br>") : "Todavía no registraste elementos para llevar."}</p><div class="small">Es una consulta: no modifiqué nada.</div></div>`;
     return;
   }
+  if(agenda.length === 1){
+    const e = agenda[0];
+    const fin = aHora(minutos(e.hora) + Number(e.duracion || 60));
+    resultado.innerHTML = `<div class="c query">${escapar(e.icono || "📅")} Tenés ${escapar(e.titulo)} el ${fechaBonita(e.fecha)} de ${e.hora} a ${fin}.</div>`;
+    return;
+  }
   resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
@@ -3016,6 +3023,12 @@ function solicitarEliminacionDesdeAgenda(id){
   desplazarConversacion();
 }
 
+function saludoKai(){
+  const hora = new Date().getHours();
+  const momento = hora < 12 ? "Buen día" : hora < 20 ? "Buenas tardes" : "Buenas noches";
+  return `¡${momento}, Gonza! 😎 ¿En qué te puedo ayudar hoy?`;
+}
+
 function nuevoChat(){
   eventoPendiente = null;
   eventosPendientes = [];
@@ -3026,7 +3039,7 @@ function nuevoChat(){
   olvidarEventoContexto();
   document.getElementById("entrada").value = "";
   document.getElementById("resultado").innerHTML = "";
-  document.getElementById("chatHistory").innerHTML = `<div class="chat-row kai"><div class="chat-avatar">✦</div><div class="chat-bubble">Hola, soy Kai. Empezamos una conversación nueva. Tu agenda y toda la información guardada siguen intactas.</div></div>`;
+  document.getElementById("chatHistory").innerHTML = `<div class="chat-row kai"><div class="chat-avatar">✦</div><div class="chat-bubble">${saludoKai()}</div></div>`;
   document.getElementById("noticeTitle").innerText = "Nuevo chat";
   document.getElementById("noticeText").innerText = "Limpié la conversación. No borré ningún dato.";
   const aviso = document.getElementById("notice");
@@ -3182,6 +3195,7 @@ actualizarProximo();
 actualizarContextoConversacion();
 revisarAvisos();
 setInterval(revisarAvisos,15000);
+document.querySelector("#chatHistory .chat-bubble")?.replaceChildren(document.createTextNode(saludoKai()));
 </script>
 
 </body>
