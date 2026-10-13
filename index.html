@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.5 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.6 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -317,7 +317,7 @@ hr{
 .home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
 .home-kai-quick button{width:auto;margin:0;padding:12px 14px}
 
-/* Atlas 1.6.5.5: datos de ejemplo y chat accesible */
+/* Atlas 1.6.5.6: datos de ejemplo y chat accesible */
 .demo-tag{font-size:10px;color:#bfdbfe;background:#1e40af;padding:3px 6px;border-radius:8px;vertical-align:middle}
 #k{padding-bottom:245px}
 .kai-composer{position:fixed;bottom:61px;left:50%;transform:translateX(-50%);width:min(520px,100%);padding:10px 16px;background:#0f172af5;border-top:1px solid #334155;z-index:11;box-shadow:0 -8px 24px #0004}
@@ -325,11 +325,18 @@ hr{
 .kai-composer .composer-actions{margin-top:6px}
 .kai-composer .conversation-context.show{margin:0 0 7px}
 .jump-latest{bottom:235px!important}
-/* Atlas 1.6.5.5: navegación cómoda en conversaciones largas */
+/* Atlas 1.6.5.6: navegación cómoda en conversaciones largas */
 .kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
 .jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
 .jump-latest.visible{display:block}
 
+
+@media(max-width:600px){
+  #resultado .c{max-width:100%;overflow-wrap:anywhere}
+  #resultado .c > div[style*="display:flex"]{flex-wrap:wrap}
+  #resultado .c > div[style*="grid-template-columns"]{display:block!important}
+  .kai-composer{box-sizing:border-box;width:100%;}
+}
 </style>
 </head>
 
@@ -344,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.5</div>
+    <div class="version">Atlas v1.6.5.6</div>
   </div>
 
   <div class="c">
@@ -440,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.5 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.6 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1574,6 +1581,10 @@ function extraerContextoNuevo(texto){
     || texto.match(/\b(?:tambien\s+)?(?:llevo|llevamos|llevar)\s+(.+?)(?:[.,;!?]|$)/i)?.[1]?.trim();
   const olvidar = texto.match(/\bno\s+me\s+tengo\s+que\s+olvidar\s+(?:de\s+)?(?:llevar\s+)?(.+?)(?:[.,;!?]|$)/i)?.[1]?.trim();
   if(llevar || olvidar) preparacion = `llevar ${llevar || olvidar}`;
+  // Correcciones negativas tienen prioridad sobre una extracción afirmativa.
+  // "no necesito llevar la orden, solamente los estudios" no agrega la orden.
+  const negacionLlevar = /\bno\s+(?:necesito|debo|tengo\s+que|hay\s+que)\s+llevar\s+/i.test(texto);
+  if(negacionLlevar) preparacion = "";
   const quitarPreparacion = normal.match(/\b(?:quita|quitar|saca|sacar|elimina|eliminar|borra|borrar|no\s+(?:necesito|tengo\s+que)\s+llevar)\s+(?:de\s+)?(?:la\s+|el\s+|los\s+|las\s+)?(.+?)(?=\s+de\s+la\s+preparacion|\s+del?\s+(?:viaje|reunion|turno)|[.,;]|$)/i)?.[1]?.trim() || "";
   let transporte = "";
   const transporteDetectado = normal.match(/\b(?:voy|vamos|viajo|viajamos|iremos|vamos\s+a\s+ir)\s+en\s+(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
@@ -1683,6 +1694,11 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
     return;
   }
   const preparacionBase = eliminacionSolicitada.lista;
+  // Nunca volver a agregar el mismo dato que se está quitando.
+  if(datos.quitarPreparacion && datos.preparacion &&
+     limpiarNombrePreparacion(datos.preparacion) === limpiarNombrePreparacion(datos.quitarPreparacion)){
+    datos = {...datos,preparacion:""};
+  }
   const preparacionConDato = datos.preparacion && !preparacionBase.some(x => normalizar(x) === normalizar(datos.preparacion))
     ? [...preparacionBase,datos.preparacion]
     : preparacionBase;
@@ -1938,6 +1954,47 @@ function aplicarContextoABorrador(datos){
   return true;
 }
 
+// v1.6.5.6: router liviano de intenciones ajenas a la agenda.
+// No consume servicios externos ni finge disponer de información en vivo.
+function atenderConsultaDeVida(texto){
+  const n = normalizar(texto);
+  const esConsulta = /[?¿]/.test(texto) || /^(?:decime|me decis|como|cuando|que|hay|sabes|recomendame|sugerime|necesito saber)\b/.test(n);
+  if(!esConsulta) return false;
+  let mensaje = "";
+  if(/\b(?:clima|pronostico|temperatura|llover|lluvia|llueve|frio|calor|viento)\b/.test(n)){
+    mensaje = '<b>🌤️ Consulta del clima</b><p>Entendí que querés conocer el pronóstico. Todavía no tengo conectado un servicio meteorológico en tiempo real. No voy a inventar temperaturas ni lluvias.</p>';
+  }else if(/\b(?:transito|trafico|embotellamiento|congestion|cortes? de calle|ruta congestionada)\b/.test(n)){
+    mensaje = '<b>🚗 Consulta de tránsito</b><p>Entendí que querés saber cómo está la circulación. Todavía no tengo datos de tránsito en vivo ni tiempos de viaje confiables. Podés contarme destino y hora de llegada para organizar tu salida, pero sin estimaciones inventadas.</p>';
+  }else if(/\b(?:colectivo|bondi|micro|parada|transporte publico|cuando pasa|proximo colectivo|linea de colectivo)\b/.test(n)){
+    mensaje = '<b>🚌 Consulta de transporte</b><p>Entendí que querés saber sobre el transporte público. Todavía no tengo horarios ni arribos en vivo conectados. Las tarjetas de la Home son DEMO, no predicciones reales.</p>';
+  }else if(/\b(?:que (?:podemos|puedo|hacemos) (?:hacer )?de comer|que (?:comemos|cocinamos|cenamos|almorzamos)|ideas? para (?:comer|cenar|almorzar)|receta|que preparo de comer)\b/.test(n)){
+    mensaje = '<b>🍽️ Ideas para comer</b><p>Podemos hacer una tortilla de papas, pastas con salsa o verduras salteadas con arroz. ¿Querés algo rápido o preferís contarme qué ingredientes tenés?</p>';
+  }
+  if(!mensaje) return false;
+  document.getElementById('resultado').innerHTML = `<div class="c query">${mensaje}<div class="small">No modifiqué tu agenda.</div></div>`;
+  return true;
+}
+
+function responderAlternativasConflicto(texto){
+  const n = normalizar(texto);
+  if(!/\b(?:alternativas|opciones|soluciones|resolver (?:ese|el|este) conflicto|que (?:me )?propones|como (?:lo|podemos) resolv)/.test(n)) return false;
+  if(!eventoPendiente || eventoPendiente.accion !== 'modificar') return false;
+  const cruces = buscarConflictos(eventoPendiente);
+  if(!cruces.length) return false;
+  const original = obtenerAgenda().find(x => String(x.id) === String(eventoPendiente.idOriginal));
+  const propuestas = cruces.map(x => {
+    const nuevaHora = aHora(minutos(eventoPendiente.hora) + Number(eventoPendiente.duracion || 60));
+    return `<p>• Podrías mover <b>${escapar(x.titulo)}</b> para después de las ${nuevaHora}, si ese horario te sirve.</p>`;
+  }).join('');
+  document.getElementById('resultado').innerHTML = `<div class="c warn"><b>⚠️ Alternativas para resolver el conflicto</b>` +
+    `<p>Tu propuesta de ${escapar(eventoPendiente.titulo)} se superpone con ${cruces.map(x=>escapar(x.titulo)).join(', ')}.</p>` +
+    `<p>• Mantener el horario original${original ? ` (${original.hora})` : ''}.</p>` + propuestas +
+    `<p>• Elegir otro horario para el turno.</p><div class="small">Son sugerencias, no cambios. La propuesta sigue pendiente de tu autorización.</div>` +
+    `<button class="secondary" onclick="mostrarConfirmacionModificacion(obtenerAgenda().find(x=>String(x.id)===String(eventoPendiente.idOriginal)))">Volver a la propuesta</button>` +
+    `<button class="secondary" onclick="cancelar()">Mantener agenda actual</button></div>`;
+  return true;
+}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -1966,6 +2023,11 @@ function ordenar(){
       : `<div class="c info">En este chat todavía no tengo una actividad concreta como referencia. Contame qué querés retomar.</div>`;
     return;
   }
+
+  // Preguntas sobre un conflicto pendiente conservan el borrador y reciben opciones.
+  if(responderAlternativasConflicto(texto)) return;
+  // Clima, transporte, tránsito y comida no son eventos de agenda.
+  if(atenderConsultaDeVida(texto)) return;
 
   // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
   // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
@@ -2016,7 +2078,7 @@ function ordenar(){
     if(datosPendientes && aplicarContextoABorrador(datosPendientes)) return;
   }
 
-  // v1.6.5.5: los aportes sobre preparación se resuelven ANTES de clasificar
+  // v1.6.5.6: los aportes sobre preparación se resuelven ANTES de clasificar
   // consultas genéricas. "También tengo que llevar..." no es una consulta.
   const contextoPrioritario = extraerContextoNuevo(texto);
   const preguntaExplicita = /[?¿]/.test(texto) ||
@@ -2595,7 +2657,35 @@ function consultarAgenda(filtro){
     resultado.innerHTML = `<div class="c query">${escapar(e.icono || "📅")} Tenés ${escapar(e.titulo)} el ${fechaBonita(e.fecha)} de ${e.hora} a ${fin}.</div>`;
     return;
   }
+  if(semana){
+    const ahora = new Date();
+    const pendientes = agenda.filter(e => estadoEvento(e,ahora).clave !== 'finished');
+    const agrupados = new Map();
+    pendientes.forEach(e => {
+      if(!agrupados.has(e.fecha)) agrupados.set(e.fecha,[]);
+      agrupados.get(e.fecha).push(e);
+    });
+    const dias = [...agrupados.entries()].map(([fecha,eventos]) =>
+      `<p><b>${escapar(fechaBonita(fecha))}</b><br>` +
+      eventos.map(e=>`${escapar(e.hora)} — ${escapar(e.titulo)}`).join('<br>') + '</p>').join('');
+    resultado.innerHTML = `<div class="c query"><b>📅 Tu semana</b><p class="small">${escapar(semana.etiqueta)}</p>` +
+      (pendientes.length ? dias : '<p>No te quedan compromisos pendientes esta semana.</p>') +
+      (agenda.length > pendientes.length ? `<p class="small">${agenda.length-pendientes.length} actividad(es) ya finalizada(s).</p>` : '') +
+      `<button class="secondary" onclick="mostrarSemanaCompleta()">Ver semana completa</button></div>`;
+    return;
+  }
   resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(detalleEvento).join("<hr>")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+}
+
+function mostrarSemanaCompleta(){
+  const filtro = interpretar('que tengo esta semana');
+  const semana = rangoSemanalConsultado('que tengo esta semana');
+  if(!semana) return;
+  const eventos = obtenerAgenda().filter(e => e.fecha >= semana.inicio && e.fecha <= semana.fin)
+    .sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
+  document.getElementById('resultado').innerHTML = `<div class="c query"><b>📅 Semana completa</b>` +
+    (eventos.length ? eventos.map(detalleEvento).join('<hr>') : '<p>No hay eventos.</p>') +
+    '<div class="small">Es una consulta; no modifiqué la agenda.</div></div>';
 }
 
 function fechasMencionadas(texto,hora){
