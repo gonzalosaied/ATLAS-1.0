@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.3 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.4 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -317,7 +317,15 @@ hr{
 .home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
 .home-kai-quick button{width:auto;margin:0;padding:12px 14px}
 
-/* Atlas 1.6.5.2: navegación cómoda en conversaciones largas */
+/* Atlas 1.6.5.4: datos de ejemplo y chat accesible */
+.demo-tag{font-size:10px;color:#bfdbfe;background:#1e40af;padding:3px 6px;border-radius:8px;vertical-align:middle}
+#k{padding-bottom:245px}
+.kai-composer{position:fixed;bottom:61px;left:50%;transform:translateX(-50%);width:min(520px,100%);padding:10px 16px;background:#0f172af5;border-top:1px solid #334155;z-index:11;box-shadow:0 -8px 24px #0004}
+.kai-composer textarea{min-height:48px;max-height:110px;height:52px;resize:vertical}
+.kai-composer .composer-actions{margin-top:6px}
+.kai-composer .conversation-context.show{margin:0 0 7px}
+.jump-latest{bottom:235px!important}
+/* Atlas 1.6.5.4: navegación cómoda en conversaciones largas */
 .kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
 .jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
 .jump-latest.visible{display:block}
@@ -336,16 +344,16 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.3</div>
+    <div class="version">Atlas v1.6.5.4</div>
   </div>
 
   <div class="c">
-    🚌 Colectivo en 18 min.<br>
+    🚌 Colectivo en 18 min. <span class="demo-tag">DEMO</span><br>
     <span class="small">El siguiente pasa 12 min después. Tenés tiempo para un café.</span>
   </div>
 
   <div class="c">
-    💡 Luz vence hoy.<br>
+    💡 Luz vence hoy. <span class="demo-tag">DEMO</span><br>
     <span class="small">Podés resolverlo ahora y olvidarte.</span>
   </div>
 
@@ -378,19 +386,16 @@ hr{
     </div>
   </div>
 
-  <textarea
-    id="entrada"
-    placeholder="Escribile a Kai o usá el micrófono..."
-  ></textarea>
-
-  <div id="conversationContext" class="conversation-context"></div>
-
-  <div class="composer-actions">
-    <button id="micButtonBottom" class="mic-inline" onclick="escuchar()" aria-label="Hablar con Kai">🎙️</button>
-    <button class="primary" onclick="ordenar()">Enviar a Kai</button>
-  </div>
-
   <div id="resultado"></div>
+
+  <div class="kai-composer" aria-label="Escribirle a Kai">
+    <div id="conversationContext" class="conversation-context"></div>
+    <textarea id="entrada" rows="2" placeholder="Escribile a Kai o usá el micrófono..."></textarea>
+    <div class="composer-actions">
+      <button id="micButtonBottom" class="mic-inline" onclick="escuchar()" aria-label="Hablar con Kai">🎙️</button>
+      <button class="primary" onclick="ordenar()">Enviar a Kai</button>
+    </div>
+  </div>
 </section>
 
 <section id="f" class="p">
@@ -435,7 +440,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.3 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.4 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1877,6 +1882,52 @@ function procesarReferenciaALaUltimaActividad(texto){
   return true;
 }
 
+function aplicarContextoABorrador(datos){
+  const borrador = eventoPendiente;
+  if(!borrador || borrador.accion !== "crear") return false;
+  // A reference to another kind of activity should not overwrite this proposal.
+  if(datos.tipo && !eventoCoincideConTipoContextual(borrador,datos.tipo)) return false;
+  const cambios = [];
+  if(datos.preparacion){
+    const actual = Array.isArray(borrador.preparacion) ? [...borrador.preparacion] : [];
+    if(!actual.some(x => normalizar(x) === normalizar(datos.preparacion))){
+      actual.push(datos.preparacion);
+      borrador.preparacion = actual;
+      cambios.push(datos.preparacion);
+    }
+  }
+  if(datos.ubicacion && datos.ubicacion !== borrador.ubicacion){
+    borrador.ubicacion = datos.ubicacion;
+    cambios.push("ubicación: " + datos.ubicacion);
+  }
+  if(datos.transporte && datos.transporte !== borrador.transporte){
+    borrador.transporte = datos.transporte;
+    cambios.push("transporte: " + datos.transporte);
+  }
+  if(datos.duracion && datos.duracion !== borrador.duracion){
+    borrador.duracion = datos.duracion;
+    cambios.push("duración: " + datos.duracion + " minutos");
+  }
+  if(datos.quitarPreparacion){
+    const anterior = Array.isArray(borrador.preparacion) ? borrador.preparacion : [];
+    const quitado = quitarDePreparacion(anterior,datos.quitarPreparacion);
+    if(quitado.encontro){
+      borrador.preparacion = quitado.lista;
+      cambios.push("quitado de preparación: " + datos.quitarPreparacion);
+    }
+  }
+  if(!cambios.length){
+    document.getElementById("resultado").innerHTML =
+      '<div class="c info"><b>Seguimos preparando este evento.</b><p>No encontré un dato nuevo para agregar. Podés darme más detalles o confirmar el guardado.</p></div>';
+    return true;
+  }
+  mostrarRevision();
+  document.getElementById("resultado").insertAdjacentHTML("afterbegin",
+    `<div class="c info"><b>✓ Actualicé el borrador, todavía no lo guardé.</b><p>${cambios.map(escapar).join("<br>")}</p></div>`);
+  desplazarConversacion();
+  return true;
+}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -1909,6 +1960,13 @@ function ordenar(){
   // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
   // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
   const n = normalizar(texto).replace(/[.!?]+$/g,"").trim();
+  if(!eventoPendiente && !conversacionPendiente &&
+     /(?:factura|facturas|pagar hoy|vence hoy|vencimiento|prioridad|prioridades|importante.*resolver|colectivo|transporte)/.test(n)){
+    resultado.innerHTML = `<div class="c info"><b>Sobre tus prioridades de hoy</b>` +
+      `<p>Las tarjetas de colectivo y luz de la Home son ejemplos de diseño (DEMO), no datos reales.</p>` +
+      `<p>Puedo ayudarte con tus eventos guardados, pero todavía no tengo conectados servicios de facturas ni transporte. No voy a inventar vencimientos.</p></div>`;
+    return;
+  }
   // Resolver primero la decisión que Kai acaba de presentar.
   if(eventoPendiente && !conversacionPendiente){
     const rechaza = /^(?:no(?:,? mejor)?(?:\s+)?(?:conserva|conservar|deja|dejalo|dejala|borres|elimines|lo elimines|la elimines|gracias)?(?:\s+(?:el|la|lo|al|a la)\s+.+)?|mejor no|dejalo como estaba|dejala como estaba|cancela(?:r)?(?:\s+.+)?|conserva(?:\s+.+)?|no hagas nada)$/i.test(n);
@@ -1941,6 +1999,13 @@ function ordenar(){
     }
   }
 
+  // v1.6.5.4: agregar información a un evento todavía NO guardado.
+  // El borrador permanece pendiente hasta la confirmación explícita del usuario.
+  if(eventoPendiente && eventoPendiente.accion === "crear"){
+    const datosPendientes = extraerContextoNuevo(texto);
+    if(datosPendientes && aplicarContextoABorrador(datosPendientes)) return;
+  }
+
   if(esCorreccionDePropuesta(texto)){
     corregirPropuestaPendiente(texto);
     return;
@@ -1964,6 +2029,14 @@ function ordenar(){
     eventoPendiente = null;
   }
 
+  if(eventoPendiente && eventoPendiente.accion === "crear"){
+    document.getElementById("resultado").innerHTML =
+      `<div class="c info"><b>Seguimos preparando ${escapar(eventoPendiente.titulo)}.</b>` +
+      `<p>No entendí si querés agregar un dato o confirmar el evento. No perdí el borrador ni cambié tu agenda.</p>` +
+      `<button class="primary" onclick="mostrarRevision()">Ver propuesta y confirmar</button>` +
+      `<button class="secondary" onclick="cancelar()">Descartar propuesta</button></div>`;
+    return;
+  }
   eventoPendiente = null;
   eventosPendientes = [];
   const normalEntrada = normalizar(texto);
