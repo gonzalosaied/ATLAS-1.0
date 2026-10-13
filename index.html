@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.4 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.5 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -317,7 +317,7 @@ hr{
 .home-kai-quick input{flex:1;min-width:0;background:#1f2937;color:#fff;border:1px solid #475569;border-radius:12px;padding:13px;font-size:15px}
 .home-kai-quick button{width:auto;margin:0;padding:12px 14px}
 
-/* Atlas 1.6.5.4: datos de ejemplo y chat accesible */
+/* Atlas 1.6.5.5: datos de ejemplo y chat accesible */
 .demo-tag{font-size:10px;color:#bfdbfe;background:#1e40af;padding:3px 6px;border-radius:8px;vertical-align:middle}
 #k{padding-bottom:245px}
 .kai-composer{position:fixed;bottom:61px;left:50%;transform:translateX(-50%);width:min(520px,100%);padding:10px 16px;background:#0f172af5;border-top:1px solid #334155;z-index:11;box-shadow:0 -8px 24px #0004}
@@ -325,7 +325,7 @@ hr{
 .kai-composer .composer-actions{margin-top:6px}
 .kai-composer .conversation-context.show{margin:0 0 7px}
 .jump-latest{bottom:235px!important}
-/* Atlas 1.6.5.4: navegación cómoda en conversaciones largas */
+/* Atlas 1.6.5.5: navegación cómoda en conversaciones largas */
 .kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
 .jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
 .jump-latest.visible{display:block}
@@ -344,7 +344,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.4</div>
+    <div class="version">Atlas v1.6.5.5</div>
   </div>
 
   <div class="c">
@@ -440,7 +440,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.4 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.5 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1570,8 +1570,9 @@ function extraerContextoNuevo(texto){
   const referencia = referenciaReunion || referenciaViaje;
   const duracion = extraerDuracion(normal);
   let preparacion = "";
-  const llevar = texto.match(/\b(?:tengo\s+que|debo)\s+llevar\s+(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
-  const olvidar = texto.match(/\bno\s+me\s+tengo\s+que\s+olvidar\s+(?:de\s+)?(?:llevar\s+)?(.+?)(?:[.,;]|$)/i)?.[1]?.trim();
+  const llevar = texto.match(/\b(?:(?:tengo|tenemos)\s+que|debo|debemos|necesito|hay\s+que)\s+llevar\s+(.+?)(?:[.,;!?]|$)/i)?.[1]?.trim()
+    || texto.match(/\b(?:tambien\s+)?(?:llevo|llevamos|llevar)\s+(.+?)(?:[.,;!?]|$)/i)?.[1]?.trim();
+  const olvidar = texto.match(/\bno\s+me\s+tengo\s+que\s+olvidar\s+(?:de\s+)?(?:llevar\s+)?(.+?)(?:[.,;!?]|$)/i)?.[1]?.trim();
   if(llevar || olvidar) preparacion = `llevar ${llevar || olvidar}`;
   const quitarPreparacion = normal.match(/\b(?:quita|quitar|saca|sacar|elimina|eliminar|borra|borrar|no\s+(?:necesito|tengo\s+que)\s+llevar)\s+(?:de\s+)?(?:la\s+|el\s+|los\s+|las\s+)?(.+?)(?=\s+de\s+la\s+preparacion|\s+del?\s+(?:viaje|reunion|turno)|[.,;]|$)/i)?.[1]?.trim() || "";
   let transporte = "";
@@ -1632,12 +1633,21 @@ function candidatosParaContexto(datos){
     compatibles = compatibles.filter(x => normalizar(x.titulo).includes(referencia));
     return compatibles;
   }
+  const normal = normalizar(datos.textoOriginal || "");
+  const diaExplicito = /\b(?:hoy|manana|pasado manana)\b/.test(normal);
+  if(diaExplicito){
+    const hoy = new Date();
+    const desplazamiento = /\bpasado manana\b/.test(normal) ? 2 : /\bmanana\b/.test(normal) ? 1 : 0;
+    hoy.setDate(hoy.getDate() + desplazamiento);
+    const fechaObjetivo = fechaLocalISO(hoy);
+    compatibles = compatibles.filter(x => x.fecha === fechaObjetivo);
+  }
   if(datos.quitarPreparacion){
     const conEseDato = compatibles.filter(x => quitarDePreparacion(Array.isArray(x.preparacion) ? x.preparacion : [],datos.quitarPreparacion).encontro);
     if(conEseDato.length) compatibles = conEseDato;
   }
   const ultimo = obtenerEventoContexto();
-  if(ultimo && estadoEvento(ultimo).clave !== "finished" && eventoCoincideConTipoContextual(ultimo,datos.tipo)) return [ultimo];
+  if(ultimo && compatibles.some(x => String(x.id) === String(ultimo.id))) return [ultimo];
   return compatibles;
 }
 
@@ -2006,6 +2016,19 @@ function ordenar(){
     if(datosPendientes && aplicarContextoABorrador(datosPendientes)) return;
   }
 
+  // v1.6.5.5: los aportes sobre preparación se resuelven ANTES de clasificar
+  // consultas genéricas. "También tengo que llevar..." no es una consulta.
+  const contextoPrioritario = extraerContextoNuevo(texto);
+  const preguntaExplicita = /[?¿]/.test(texto) ||
+    /^(?:que|cual|cuando|donde|como|a que hora|mostrame|decime|consulta|consultar)\b/.test(n);
+  const aportePreparacion = contextoPrioritario &&
+    (contextoPrioritario.preparacion || contextoPrioritario.quitarPreparacion);
+  if(aportePreparacion && !preguntaExplicita && !conversacionPendiente &&
+     (!eventoPendiente || eventoPendiente.accion !== "crear")){
+    prepararEnriquecimientoContextual(contextoPrioritario);
+    return;
+  }
+
   if(esCorreccionDePropuesta(texto)){
     corregirPropuestaPendiente(texto);
     return;
@@ -2049,6 +2072,11 @@ function ordenar(){
   const contextoNuevo = accionGeneral === "crear" || accionGeneral === "consultar" || accionGeneral === "disponibilidad" ? null : extraerContextoNuevo(texto);
   if(contextoNuevo){
     prepararEnriquecimientoContextual(contextoNuevo);
+    return;
+  }
+  if(/^(?:tambien\s+)?(?:tengo|tenemos)\s+que\s+llevar\b/.test(normalEntrada) &&
+     !contextoNuevo && !conversacionPendiente){
+    resultado.innerHTML = '<div class="c info">Entendí que querés agregar algo para preparar, pero no identifiqué qué. ¿Para qué evento es?</div>';
     return;
   }
   if(!["consultar","disponibilidad","modificar","eliminar","clima"].includes(accionGeneral)){
