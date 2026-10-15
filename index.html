@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.8 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.9 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -897,6 +897,10 @@ function extraerFecha(textoNormalizado, hora){
 }
 
 function clasificarIntencion(textoNormalizado){
+  // v1.6.5.9: "cuando salga del trabajo" describe un plan futuro,
+  // no es la pregunta "¿cuándo...?". No desviar a consulta de agenda.
+  if(/^(?:cuando|apenas|en cuanto)\s+(?:salga|salgo|termine|termino)\b/.test(textoNormalizado) &&
+     !/^(?:cuando|apenas|en cuanto)\s+(?:salga|salgo|termine|termino).*\?\s*$/.test(textoNormalizado)) return "informar";
   // Preguntas naturales tienen prioridad sobre frases informativas.
   if(/^(?:a que hora|cuando|que dia|en que horario|a que hora es|tengo|hay)\b/.test(textoNormalizado) &&
      (/[?]$/.test(textoNormalizado) || /^(?:a que hora|cuando|que dia|en que horario)\b/.test(textoNormalizado) || /\b(?:este|el) (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(textoNormalizado) && /^tengo\b/.test(textoNormalizado))) return "consultar";
