@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.7 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.8 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.7</div>
+    <div class="version">Atlas v1.6.5.8</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.7 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.8 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1954,7 +1954,7 @@ function aplicarContextoABorrador(datos){
   return true;
 }
 
-// v1.6.5.7: router liviano de intenciones ajenas a la agenda.
+// v1.6.5.8: router liviano de intenciones ajenas a la agenda.
 // No consume servicios externos ni finge disponer de información en vivo.
 function atenderConsultaDeVida(texto){
   const n = normalizar(texto);
@@ -1975,7 +1975,7 @@ function atenderConsultaDeVida(texto){
   return true;
 }
 
-// v1.6.5.7: pedidos de asesoramiento y problemas NO se mandan a la agenda.
+// v1.6.5.8: pedidos de asesoramiento y problemas NO se mandan a la agenda.
 function atenderAyudaGeneral(texto){
   const n = normalizar(texto);
   const accionAgenda = /\b(?:agendame|agenda(?:lo|la)?|anotame|recordame|programame|crea (?:un|una) (?:evento|turno)|modifica (?:el|la) (?:turno|reunion|evento)|cambia(?:me)? (?:el|la) (?:turno|reunion|cita)|elimina (?:el|la) (?:turno|evento|reunion))\b/.test(n);
@@ -2103,7 +2103,7 @@ function ordenar(){
     if(datosPendientes && aplicarContextoABorrador(datosPendientes)) return;
   }
 
-  // v1.6.5.7: los aportes sobre preparación se resuelven ANTES de clasificar
+  // v1.6.5.8: los aportes sobre preparación se resuelven ANTES de clasificar
   // consultas genéricas. "También tengo que llevar..." no es una consulta.
   const contextoPrioritario = extraerContextoNuevo(texto);
   const preguntaExplicita = /[?¿]/.test(texto) ||
@@ -2175,6 +2175,10 @@ function ordenar(){
   }
   const evento = interpretar(texto);
 
+  // Consultar agenda existente también ante una mención informal de un plan.
+  if(["crear","informar","ambigua"].includes(evento.accion) &&
+     !eventoPendiente && continuarPlanExistente(texto,evento)) return;
+
   if(evento.accion === "clima"){
     resultado.innerHTML = `<div class="c query"><b>🌤️ Entendí que querés consultar el clima.</b><p>Todavía no tengo conectado el servicio meteorológico de Mendoza.</p><div class="small">No creé ninguna actividad. Esta intención queda preparada para una futura integración.</div></div>`;
     return;
@@ -2215,8 +2219,45 @@ function ordenar(){
   procesarCreacion(evento);
 }
 
+// v1.6.5.8: recuperar planes existentes antes de ofrecer una nueva tarea.
+// Comparación conservadora: misma fecha y conceptos significativos compartidos.
+function buscarPlanRelacionado(texto,evento){
+  const n = normalizar(texto);
+  if(/\b(?:elimina|borra|cancela|modifica|cambia|mueve|reprograma)\b/.test(n)) return null;
+  const fecha = evento.fecha || ( /\b(?:hoy|esta tarde|esta noche)\b/.test(n) ? fechaLocalISO(new Date()) : null);
+  if(!fecha) return null;
+  const irrelevantes = new Set(['para','tengo','que','voy','hoy','manana','tarde','noche','salir','salgo','trabajo','despues','antes','cuando','comprar','comprarle','compra','regalo','regalar','hacer','tarea','evento','agenda','agendar','recordar','recordame','quiero','con','del','dia','las','los','una','uno','por','mis','sus','este','esta','desde','hasta','madre','sorpresa']);
+  const palabras = t => normalizar(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w => w.length > 2 && !irrelevantes.has(w));
+  const p = palabras(n);
+  const temaRegalo = /\b(?:regalo|regalar|comprarle|cartera)\b/.test(n);
+  const candidatos = obtenerAgenda().filter(x => x.fecha === fecha && !x.completado && !x.finalizado).map(x=>{
+    const titulo=normalizar(x.titulo+' '+(x.motivo||''));
+    const tokens = palabras(titulo);
+    const comunes = p.filter(w=>tokens.includes(w));
+    const ambosRegalo = temaRegalo && /\b(?:regalo|regalar|cartera)\b/.test(titulo);
+    const persona = p.some(w => tokens.includes(w) && w.length >= 4);
+    const puntaje = comunes.length * 2 + (ambosRegalo ? 2 : 0);
+    return {evento:x,puntaje,ambosRegalo,persona};
+  }).filter(c=>c.puntaje>=4 && (c.persona || c.puntaje>=6));
+  candidatos.sort((a,b)=>b.puntaje-a.puntaje);
+  if(!candidatos.length || (candidatos[1] && candidatos[0].puntaje === candidatos[1].puntaje)) return null;
+  return candidatos[0].evento;
+}
+
+function continuarPlanExistente(texto,evento){
+  const existente = buscarPlanRelacionado(texto,evento);
+  if(!existente) return false;
+  recordarEventoContexto(existente.id);
+  const n = normalizar(texto);
+  const regalo = /\b(?:regalo|regalar|cartera)\b/.test(n+' '+normalizar(existente.titulo));
+  const pregunta = regalo ? '¿Ya sabés qué le vas a comprar o querés que te ayude a elegir?' : '¿Querés agregarle algún dato o seguimos con ese plan?';
+  document.getElementById('resultado').innerHTML = `<div class="c info"><b>¡Esto ya lo tenemos agendado! 😄</b><p>${detalleEvento(existente)}</p><p>${pregunta}</p><div class="small">No creé otra tarea ni modifiqué la existente.</div></div>`;
+  return true;
+}
+
 function procesarCreacion(evento){
   const resultado = document.getElementById("resultado");
+  if(continuarPlanExistente(evento.textoOriginal || evento.titulo,evento)) return;
 
   if(evento.fechaInvalida){
     resultado.innerHTML = `<div class="c warn"><b>La fecha indicada no existe.</b><p>Revisala y decímela nuevamente. No guardé ningún evento.</p></div>`;
