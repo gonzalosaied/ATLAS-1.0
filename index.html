@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.6 — continuidad y horarios naturales</title>
+<title>Atlas v1.6.5.7 — continuidad y horarios naturales</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.6</div>
+    <div class="version">Atlas v1.6.5.7</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.6 — continuidad conversacional y horarios naturales.
+      Atlas v1.6.5.7 — continuidad conversacional y horarios naturales.
     </span>
   </div>
 </section>
@@ -1954,7 +1954,7 @@ function aplicarContextoABorrador(datos){
   return true;
 }
 
-// v1.6.5.6: router liviano de intenciones ajenas a la agenda.
+// v1.6.5.7: router liviano de intenciones ajenas a la agenda.
 // No consume servicios externos ni finge disponer de información en vivo.
 function atenderConsultaDeVida(texto){
   const n = normalizar(texto);
@@ -1971,7 +1971,31 @@ function atenderConsultaDeVida(texto){
     mensaje = '<b>🍽️ Ideas para comer</b><p>Podemos hacer una tortilla de papas, pastas con salsa o verduras salteadas con arroz. ¿Querés algo rápido o preferís contarme qué ingredientes tenés?</p>';
   }
   if(!mensaje) return false;
-  document.getElementById('resultado').innerHTML = `<div class="c query">${mensaje}<div class="small">No modifiqué tu agenda.</div></div>`;
+  document.getElementById('resultado').innerHTML = `<div class="c query">${mensaje}</div>`;
+  return true;
+}
+
+// v1.6.5.7: pedidos de asesoramiento y problemas NO se mandan a la agenda.
+function atenderAyudaGeneral(texto){
+  const n = normalizar(texto);
+  const accionAgenda = /\b(?:agendame|agenda(?:lo|la)?|anotame|recordame|programame|crea (?:un|una) (?:evento|turno)|modifica (?:el|la) (?:turno|reunion|evento)|cambia(?:me)? (?:el|la) (?:turno|reunion|cita)|elimina (?:el|la) (?:turno|evento|reunion))\b/.test(n);
+  if(accionAgenda) return false;
+  const asesora = /\b(?:que me (?:conviene|recomendas)|que (?:recomendas|conviene)|me (?:recomendas|aconsejas)|comparar|comparame|comparacion|mejor opcion|nuevo o usado|usado o nuevo|ayudame a (?:elegir|decidir|comparar)|no se si me conviene|cual (?:compro|elijo))\b/.test(n);
+  const problema = /\b(?:se me (?:rompio|rompe|quemo|perdio)|no (?:anda|funciona|enciende|arranca|enfria)|tengo un problema|necesito (?:resolver|solucionar)|ayudame a (?:resolver|solucionar|encontrar|buscar)|me ayudas a (?:encontrar|buscar|resolver)|quiero comprar|necesito comprar)\b/.test(n);
+  if(!asesora && !problema) return false;
+  const auto = /\b(?:auto|vehiculo|coche|usado|0 ?km)\b/.test(n);
+  const heladera = /\b(?:heladera|refrigerador|freezer)\b/.test(n);
+  let mensaje;
+  if(auto && asesora){
+    mensaje = '<b>🚗 Te ayudo a comparar opciones</b><p>Un auto nuevo suele ofrecer garantía y menos incertidumbre mecánica; uno usado puede costar menos, pero conviene revisar estado, historial y gastos de mantenimiento.</p><p>¿Qué presupuesto tenés pensado? Con eso podemos comparar mejor, sin inventar precios.</p>';
+  }else if(heladera){
+    mensaje = '<b>🧊 Vamos a resolver lo de la heladera</b><p>Podemos evaluar si conviene repararla o reemplazarla. Si querés comprar una nueva, podemos definir capacidad, medidas y presupuesto antes de comparar modelos.</p><p>¿Querés reparar la actual o buscar una nueva? Todavía no consulto precios ni stock en vivo.</p>';
+  }else if(asesora){
+    mensaje = '<b>💡 Te ayudo a decidir</b><p>Podemos comparar ventajas, desventajas y costos de cada alternativa. ¿Cuáles son las opciones que estás evaluando? Si ya me las contaste, decime qué criterio te importa más.</p>';
+  }else{
+    mensaje = '<b>🛠️ Veamos cómo resolverlo</b><p>Podemos identificar qué pasó, evaluar soluciones y elegir el próximo paso. ¿Qué es lo que dejó de funcionar o qué resultado necesitás conseguir?</p>';
+  }
+  document.getElementById('resultado').innerHTML = `<div class="c query">${mensaje}</div>`;
   return true;
 }
 
@@ -2028,6 +2052,7 @@ function ordenar(){
   if(responderAlternativasConflicto(texto)) return;
   // Clima, transporte, tránsito y comida no son eventos de agenda.
   if(atenderConsultaDeVida(texto)) return;
+  if(atenderAyudaGeneral(texto)) return;
 
   // Primero resolver decisiones pendientes, antes de interpretar una nueva intención.
   // Una respuesta breve no debe iniciar una operación distinta ni borrar el contexto.
@@ -2078,7 +2103,7 @@ function ordenar(){
     if(datosPendientes && aplicarContextoABorrador(datosPendientes)) return;
   }
 
-  // v1.6.5.6: los aportes sobre preparación se resuelven ANTES de clasificar
+  // v1.6.5.7: los aportes sobre preparación se resuelven ANTES de clasificar
   // consultas genéricas. "También tengo que llevar..." no es una consulta.
   const contextoPrioritario = extraerContextoNuevo(texto);
   const preguntaExplicita = /[?¿]/.test(texto) ||
@@ -2814,12 +2839,56 @@ function prepararModificacion(pedido){
 }
 
 function mostrarConfirmacionModificacion(original){
+  if(!eventoPendiente) return;
   const conflictos = buscarConflictos(eventoPendiente);
   const aviso = conflictos.length ? `<div class="c warn"><b>⚠️ Este cambio genera un conflicto.</b><p><b>Se superpone con:</b></p>${conflictos.map(detalleEvento).join("<hr>")}<div class="small">Todavía no modifiqué nada.</div></div>` : `<div class="c success"><b>No encontré conflictos para el nuevo horario.</b></div>`;
-  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Entendí que querés modificar esto</b><p><b>Antes:</b></p>${detalleEvento(original)}<hr><p><b>Después:</b></p>${detalleEvento(eventoPendiente)}</div>${aviso}<div class="c info"><button class="primary" onclick="confirmarModificacion()">${conflictos.length ? "Modificar igualmente" : "Sí, modificar"}</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+  const alternativas = conflictos.length ? `<div class="c info"><b>💡 Opciones para resolverlo</b><p>Elegí cómo querés continuar. No se aplicará ningún cambio sin tu confirmación.</p>
+    <button class="option" onclick="cancelar()">Mantener la agenda como estaba</button>
+    <button class="option" onclick="proponerOtroHorarioModificacion()">Buscar otro horario libre para el turno</button>
+    <button class="option" onclick="proponerMoverActividadEnConflicto()">Mover la actividad que se superpone</button>
+    <button class="secondary" onclick="confirmarModificacion()">Mantener el conflicto y modificar igualmente</button></div>` : `<div class="c info"><button class="primary" onclick="confirmarModificacion()">Sí, modificar</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+  document.getElementById("resultado").innerHTML = `<div class="c info"><b>Entendí que querés modificar esto</b><p><b>Antes:</b></p>${detalleEvento(original)}<hr><p><b>Después:</b></p>${detalleEvento(eventoPendiente)}</div>${aviso}${alternativas}`;
+}
+function proponerOtroHorarioModificacion(){
+  if(!eventoPendiente || eventoPendiente.accion !== 'modificar') return;
+  const antes = buscarHoraLibre(eventoPendiente,-1), despues = buscarHoraLibre(eventoPendiente,1);
+  const opciones = [...new Set([antes,despues])].filter(h => h && h !== eventoPendiente.hora && !buscarConflictos({...eventoPendiente,hora:h}).length);
+  document.getElementById('resultado').innerHTML = `<div class="c info"><b>🕒 Horarios alternativos para ${escapar(eventoPendiente.titulo)}</b><p>Son horarios libres en tu agenda, no disponibilidad confirmada del profesional.</p>${opciones.map(h=>`<button class="option" onclick="elegirHoraModificacion('${h}')">Proponer las ${h}</button>`).join('') || '<p>No encontré una alternativa libre cercana.</p>'}<button class="secondary" onclick="mostrarConfirmacionModificacion(obtenerAgenda().find(x=>String(x.id)===String(eventoPendiente.idOriginal)))">Volver</button></div>`;
+}
+function elegirHoraModificacion(hora){
+  if(!eventoPendiente || eventoPendiente.accion !== 'modificar') return;
+  const propuesta = {...eventoPendiente,hora};
+  if(buscarConflictos(propuesta).length){proponerOtroHorarioModificacion();return;}
+  eventoPendiente = propuesta;
+  mostrarConfirmacionModificacion(obtenerAgenda().find(x=>String(x.id)===String(eventoPendiente.idOriginal)));
+}
+let cambioDobleModificacion = null;
+function proponerMoverActividadEnConflicto(){
+  if(!eventoPendiente || eventoPendiente.accion !== 'modificar') return;
+  const cruces = buscarConflictos(eventoPendiente);
+  if(cruces.length !== 1){document.getElementById('resultado').innerHTML='<div class="c warn">Hay varios eventos superpuestos. Primero elegí otro horario para el turno o revisá cada conflicto.</div>';return;}
+  const existente = cruces[0];
+  const fin = minutos(eventoPendiente.hora) + Number(eventoPendiente.duracion || 60);
+  if(fin >= 24*60) return;
+  const movido = {...existente,hora:aHora(fin)};
+  const agenda = obtenerAgenda().filter(x => String(x.id) !== String(existente.id));
+  const crucesRestantes = agenda.some(x => String(x.id) !== String(eventoPendiente.idOriginal) && seSuperponen(x,movido));
+  if(crucesRestantes){document.getElementById('resultado').innerHTML='<div class="c warn">Mover esa actividad justo después también genera otro conflicto. Probá un horario distinto.</div>';return;}
+  cambioDobleModificacion = {originalId:eventoPendiente.idOriginal,propuesto:{...eventoPendiente},movido};
+  document.getElementById('resultado').innerHTML = `<div class="c info"><b>Propuesta para resolver el conflicto</b><p>Turno modificado:</p>${detalleEvento(eventoPendiente)}<hr><p>Actividad que moveríamos:</p>${detalleEvento(movido)}<p class="small">Es una propuesta de agenda; confirmá la disponibilidad real antes de cambiar un turno médico.</p><button class="primary" onclick="confirmarCambioDobleModificacion()">Confirmar ambos cambios</button><button class="secondary" onclick="mostrarConfirmacionModificacion(obtenerAgenda().find(x=>String(x.id)===String(eventoPendiente.idOriginal)))">Volver sin cambiar</button></div>`;
+}
+function confirmarCambioDobleModificacion(){
+  const plan=cambioDobleModificacion;
+  if(!plan || !eventoPendiente || String(plan.originalId)!==String(eventoPendiente.idOriginal)) return;
+  const propuesto={...plan.propuesto}; delete propuesto.accion; delete propuesto.idOriginal;
+  const agenda=obtenerAgenda().map(x=>String(x.id)===String(plan.originalId)?propuesto:String(x.id)===String(plan.movido.id)?plan.movido:x);
+  guardarAgenda(agenda); cambioDobleModificacion=null; eventoPendiente=null;
+  registrarAccionCompletada('Actualicé ambos horarios.',`<div class="c success"><b>✓ Cambios guardados</b><p>Turno:</p>${detalleEvento(propuesto)}<hr><p>Actividad movida:</p>${detalleEvento(plan.movido)}</div>`);
+  renderAgenda(); actualizarProximo();
 }
 
 function confirmarModificacion(){
+  cambioDobleModificacion = null;
   if(!eventoPendiente?.idOriginal) return;
   const actualizado = {...eventoPendiente};
   delete actualizado.idOriginal;
@@ -3126,6 +3195,7 @@ async function guardarConPermiso(){
 }
 
 function cancelar(){
+  cambioDobleModificacion = null;
   eventoPendiente = null;
   eventosPendientes = [];
   movimientoConflictoPendiente = null;
