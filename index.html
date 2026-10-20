@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r3 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r4 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r3</div>
+    <div class="version">Atlas v1.6.5.10-r4</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r3 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r4 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -935,6 +935,8 @@ function intervaloConsultaAgenda(texto){
   return null;
 }
 function esConsultaAgendaNatural(n){
+  n=n.replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
+  if(/^(?:a que hora|cuando|que dia|en que horario|cual es (?:la|mi) proxima)\b/.test(n) && /\b(?:turno|reunion|dentista|medico|gimnasio|futbol|actividad|evento)\b/.test(n)) return true;
   return /\b(?:que tengo|que hay|agendad[oa]s?|actividades|eventos|reuniones|turnos|mostrame|mostrar|consultar|agenda|pendientes|finalizadas)\b/.test(n) &&
     !/\b(?:agendame|agendar|anotame|crea|crear|guardame|elimina|borra|cancela|modifica|cambia|mueve)\b/.test(n);
 }
@@ -970,6 +972,7 @@ function consultaConContexto(texto){
 }
 
 function clasificarIntencion(textoNormalizado){
+  textoNormalizado = textoNormalizado.replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
   // v1.6.5.10: "cuando salga del trabajo" describe un plan futuro,
   // no es la pregunta "¿cuándo...?". No desviar a consulta de agenda.
   if(/^(?:cuando|apenas|en cuanto)\s+(?:salga|salgo|termine|termino)\b/.test(textoNormalizado) &&
@@ -1936,6 +1939,24 @@ function extraerAvisoContextual(textoNormalizado){
   return match[2].startsWith("hora") ? cantidad*60 : cantidad;
 }
 
+function consultarReferenciaConversacional(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
+  if(!/^(?:y\s+)?(?:a que hora quedo(?: entonces)?|en que horario quedo|cuando quedo(?: entonces)?|y a que hora|y cuando|y donde(?: era)?|donde era|a que hora era|a que hora es entonces)$/.test(n)) return false;
+  const e=obtenerEventoContexto();
+  const resultado=document.getElementById("resultado");
+  if(!e){
+    resultado.innerHTML='<div class="c query">¿De qué actividad hablás? Decime el nombre y la busco en tu agenda.</div>';
+    return true;
+  }
+  const preguntaLugar=/\bdonde\b/.test(n);
+  if(preguntaLugar){
+    resultado.innerHTML=`<div class="c query">${e.ubicacion ? `${escapar(e.titulo)}: ${escapar(e.ubicacion)}.` : `Todavía no tengo una ubicación registrada para ${escapar(e.titulo)}.`}<div class="small">No modifiqué nada.</div></div>`;
+  }else{
+    resultado.innerHTML=`<div class="c query">${escapar(e.titulo)} quedó para el ${escapar(fechaBonita(e.fecha))}, de <b>${escapar(e.hora)} a ${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</b>.<div class="small">No hice ningún cambio en tu agenda.</div></div>`;
+  }
+  return true;
+}
+
 function esReferenciaALaUltimaActividad(texto){
   if(!obtenerEventoContexto()) return false;
   const normal = normalizar(texto);
@@ -2137,6 +2158,7 @@ function ordenar(){
     return;
   }
 
+  if(consultarReferenciaConversacional(texto)) return;
   // Preguntas sobre un conflicto pendiente conservan el borrador y reciben opciones.
   if(responderAlternativasConflicto(texto)) return;
   // Clima, transporte, tránsito y comida no son eventos de agenda.
@@ -2182,6 +2204,7 @@ function ordenar(){
   }
   const rechazoPendiente = /^(?:no[, ]*)?(?:mejor )?(?:dejalo|dejala|dejarlo|dejarla) (?:como estaba|como esta|asi)|^(?:no[, ]*)?(?:cancela|cancelar|descarta|descartar)(?: (?:el|la|este|esta))? (?:cambio|modificacion|propuesta)(?: de (?:horario|hora|fecha))?(?: del? .+)?$|^(?:no[, ]*)?(?:cancelalo|cancelala|olvidalo|olvidala|no cambies nada)$/i.test(n);
   if(rechazoPendiente && (eventoPendiente || conversacionPendiente || movimientoConflictoPendiente || enriquecimientoPendiente)){
+    if(eventoPendiente?.idOriginal) recordarEventoContexto(eventoPendiente.idOriginal);
     cancelar();
     return;
   }
@@ -2801,6 +2824,9 @@ function consultarAgenda(filtro){
   if(intervalo) agenda = agenda.filter(x=>x.fecha>=intervalo.inicio && x.fecha<=intervalo.fin);
   else if(semana) agenda = agenda.filter(x => x.fecha >= semana.inicio && x.fecha <= semana.fin);
   else if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
+  const textoConsultaNormal=normalizar(filtro.textoOriginal || "").replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
+  const pideProxima= /\b(?:proximo|proxima|siguiente)\b/.test(textoConsultaNormal) && !/\b(?:semana|mes|ano|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(textoConsultaNormal);
+  const pideAnterior= /\b(?:anterior|ultima|pasada)\b/.test(textoConsultaNormal) && !/\b(?:semana|mes|ano)\b/.test(textoConsultaNormal);
   const estadoSolicitado = filtro.estadoConsulta || estadoConsultaSolicitado(normalizar(filtro.textoOriginal));
   if(estadoSolicitado) agenda=agenda.filter(x=>{
     const finalizado=Boolean(x.finalizado || x.completado || estadoEvento(x).clave==='finished');
@@ -2813,6 +2839,13 @@ function consultarAgenda(filtro){
   else if(limite?.tipo === "despues" && !intervalo) agenda = agenda.filter(x => minutos(x.hora) >= minutos(limite.hora));
   else if(filtro.hora && !intervalo) agenda = agenda.filter(x => minutos(x.hora) <= minutos(filtro.hora) && minutos(x.hora)+x.duracion > minutos(filtro.hora));
   if(filtro.icono !== "📌" && !intervalo) agenda = agenda.filter(x => coincideActividad(x,filtro));
+  if(pideProxima || pideAnterior){
+    const ahora=new Date();
+    const instante=e=>new Date(`${e.fecha}T${e.hora}:00`).getTime();
+    agenda=agenda.filter(e=>pideProxima ? instante(e)>=ahora.getTime() : instante(e)<ahora.getTime());
+    agenda.sort((a,b)=>pideProxima ? instante(a)-instante(b) : instante(b)-instante(a));
+    agenda=agenda.slice(0,1);
+  }
   const resultado = document.getElementById("resultado");
 
   if(!agenda.length){
