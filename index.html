@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r1 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10</div>
+    <div class="version">Atlas v1.6.5.10-r1</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r1 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -923,24 +923,33 @@ function esConsultaAgendaNatural(n){
   return /\b(?:que tengo|que hay|agendad[oa]s?|actividades|eventos|reuniones|turnos|mostrame|mostrar|consultar|agenda|pendientes|finalizadas)\b/.test(n) &&
     !/\b(?:agendame|agendar|anotame|crea|crear|guardame|elimina|borra|cancela|modifica|cambia|mueve)\b/.test(n);
 }
+function estadoConsultaSolicitado(n){
+  // Las negaciones tienen prioridad: "sin incluir las finalizadas" significa pendientes.
+  if(/\b(?:sin incluir|excepto|sin mostrar|no mostrar|exclui?r)\s+(?:las?\s+)?finalizadas\b|\bfinalizadas\s+no\b|\bno\s+las\s+finalizadas\b/.test(n)) return 'pendientes';
+  if(/\b(?:sin incluir|excepto|sin mostrar|no mostrar|exclui?r)\s+(?:las?\s+)?pendientes\b|\bpendientes\s+no\b/.test(n)) return 'finalizadas';
+  const mentions=[...n.matchAll(/\b(pendientes|finalizadas)\b/g)];
+  return mentions.length ? mentions[0][1] : null;
+}
 function esContinuacionConsulta(n){
-  return Boolean(ultimaConsultaAgenda) && /^(?:y\s+)?(?:este mes|esta semana|el mes que viene|el proximo mes|en (?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)|solo (?:las? )?(?:pendientes|finalizadas)|(?:quiero saber |mostrame )?(?:solo |unicamente )?(?:las? )?(?:pendientes|finalizadas)|y (?:las? )?(?:pendientes|finalizadas))\b/.test(n);
+  if(!ultimaConsultaAgenda) return false;
+  return /^(?:(?:y|pero|ahora|mejor|entonces)\s+)?(?:(?:mostrame|mostrar|quiero saber|que hay|que tengo|me mostras|y)\s+)?(?:(?:solo|solamente|unicamente|las|los|tareas|actividades|eventos|de|en|del)\s+)*(?:pendientes|finalizadas|este mes|esta semana|el mes que viene|el proximo mes|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/.test(n);
 }
 function consultaConContexto(texto){
-  const n=normalizar(texto);
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
   const continuacion=esContinuacionConsulta(n);
   if(!esConsultaAgendaNatural(n) && !continuacion) return false;
-  let base=texto;
-  const cambiaPeriodo=/\b(?:mes|semana|octubre|noviembre|diciembre|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|del? \d{1,2} al \d{1,2})\b/.test(n);
-  if(continuacion && !cambiaPeriodo) base=ultimaConsultaAgenda.periodo+' '+texto;
-  if(continuacion && cambiaPeriodo && !/\b(?:que tengo|agenda|actividades|agendadas|mostrame)\b/.test(n)) base='que tengo agendado '+texto;
-  const pidePendientes=/\b(?:pendientes|sin incluir las finalizadas|finalizadas no|no las finalizadas)\b/.test(n);
-  const pideFinalizadas=/\b(?:solo|unicamente) (?:las? )?finalizadas\b/.test(n);
-  const estado=pideFinalizadas?'finalizadas':pidePendientes?'pendientes':(continuacion?ultimaConsultaAgenda.estado:null);
-  ultimaConsultaAgenda={periodo: cambiaPeriodo||!continuacion ? base : ultimaConsultaAgenda.periodo,estado};
-  const filtro=interpretar(base);
+  const periodoExplicito=intervaloConsultaAgenda(texto);
+  const semanaExplicita=rangoSemanalConsultado(texto);
+  const tienePeriodo=Boolean(periodoExplicito||semanaExplicita||/\b(?:manana|hoy|pasado manana|ayer|proxima semana|semana que viene)\b/.test(n));
+  const periodo=tienePeriodo ? texto : (continuacion && ultimaConsultaAgenda ? ultimaConsultaAgenda.periodo : texto);
+  const nuevoEstado=estadoConsultaSolicitado(n);
+  const estado=nuevoEstado || (continuacion && ultimaConsultaAgenda ? ultimaConsultaAgenda.estado : null);
+  ultimaConsultaAgenda={periodo,estado};
+  const filtro=interpretar(periodo);
   filtro.accion='consultar';
   filtro.estadoConsulta=estado;
+  // Separar texto de filtro y período: no reusar negaciones del turno anterior.
+  filtro.textoOriginal=periodo;
   consultarAgenda(filtro);
   return true;
 }
@@ -2756,7 +2765,7 @@ function consultarAgenda(filtro){
   if(intervalo) agenda = agenda.filter(x=>x.fecha>=intervalo.inicio && x.fecha<=intervalo.fin);
   else if(semana) agenda = agenda.filter(x => x.fecha >= semana.inicio && x.fecha <= semana.fin);
   else if(filtro.fecha) agenda = agenda.filter(x => x.fecha === filtro.fecha);
-  const estadoSolicitado = filtro.estadoConsulta || (/\b(?:pendientes|sin incluir las finalizadas|finalizadas no)\b/.test(normalizar(filtro.textoOriginal)) ? 'pendientes' : /\b(?:solo|unicamente) (?:las? )?finalizadas\b/.test(normalizar(filtro.textoOriginal)) ? 'finalizadas' : null);
+  const estadoSolicitado = filtro.estadoConsulta || estadoConsultaSolicitado(normalizar(filtro.textoOriginal));
   if(estadoSolicitado) agenda=agenda.filter(x=>{
     const finalizado=Boolean(x.finalizado || x.completado || estadoEvento(x).clave==='finished');
     return estadoSolicitado==='finalizadas' ? finalizado : !finalizado;
@@ -2797,7 +2806,7 @@ function consultarAgenda(filtro){
   }
   if(semana){
     const ahora = new Date();
-    const pendientes = agenda.filter(e => estadoEvento(e,ahora).clave !== 'finished');
+    const pendientes = estadoSolicitado ? agenda : agenda.filter(e => estadoEvento(e,ahora).clave !== 'finished');
     const agrupados = new Map();
     pendientes.forEach(e => {
       if(!agrupados.has(e.fecha)) agrupados.set(e.fecha,[]);
@@ -2812,7 +2821,7 @@ function consultarAgenda(filtro){
       `<button class="secondary" onclick="mostrarSemanaCompleta()">Ver semana completa</button></div>`;
     return;
   }
-  resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("")}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.slice(0,8).map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("")}${agenda.length>8 ? `<details><summary>Ver ${agenda.length-8} actividades más</summary>${agenda.slice(8).map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}</p>`).join("")}</details>` : ""}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
 function mostrarSemanaCompleta(){
