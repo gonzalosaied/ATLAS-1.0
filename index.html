@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r1 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r2 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r1</div>
+    <div class="version">Atlas v1.6.5.10-r2</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r1 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r2 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -906,6 +906,21 @@ function intervaloConsultaAgenda(texto){
   const mes = mesExplicito >= 0 ? mesExplicito : hoy.getMonth();
   const anioExplicito = n.match(/\b(20\d{2})\b/);
   const anio = anioExplicito ? Number(anioExplicito[1]) : hoy.getFullYear();
+  // "lo que queda del mes" es desde hoy, no el mes entero.
+  if(/\b(?:lo que queda (?:de|del) mes|resto del mes|hasta fin(?:ales)? de mes|hasta fin de mes|de hoy a fin de mes)\b/.test(n)){
+    const inicio = new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+    const fin = new Date(hoy.getFullYear(),hoy.getMonth()+1,0);
+    return {inicio:fechaLocalISO(inicio),fin:fechaLocalISO(fin),etiqueta:'lo que queda del mes'};
+  }
+  // Intervalos numéricos, por ejemplo: "del 20-10 al 31-10".
+  const rangoNumerico=n.match(/\b(?:del?|desde(?: el)?)\s+(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\s+(?:al|hasta(?: el)?)\s+(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
+  if(rangoNumerico){
+    const resolverAnio=x=>x ? (Number(x)<100 ? 2000+Number(x) : Number(x)) : anio;
+    const inicio=crearFechaValidada(resolverAnio(rangoNumerico[3]),Number(rangoNumerico[2])-1,Number(rangoNumerico[1]));
+    const fin=crearFechaValidada(resolverAnio(rangoNumerico[6]),Number(rangoNumerico[5])-1,Number(rangoNumerico[4]));
+    if(inicio && fin && inicio<=fin) return {inicio:fechaLocalISO(inicio),fin:fechaLocalISO(fin),etiqueta:`del ${rangoNumerico[1]}/${rangoNumerico[2]} al ${rangoNumerico[4]}/${rangoNumerico[5]}`};
+    return {invalido:true};
+  }
   const rango = n.match(/\b(?:del?|desde(?: el)?)\s+(\d{1,2})(?:\s+de\s+[a-z]+)?\s+(?:al|hasta(?: el)?)\s+(\d{1,2})\s+de\s+([a-z]+)\b/);
   if(rango && MESES_ATLAS.includes(rango[3])){
     const m = MESES_ATLAS.indexOf(rango[3]);
@@ -2821,7 +2836,8 @@ function consultarAgenda(filtro){
       `<button class="secondary" onclick="mostrarSemanaCompleta()">Ver semana completa</button></div>`;
     return;
   }
-  resultado.innerHTML = `<div class="c query"><b>📅 ${semana ? `Esto tenés ${semana.etiqueta}` : "Esto figura en tu agenda"}</b>${semana ? `<p class="small">Del ${fechaBonita(semana.inicio)} al ${fechaBonita(semana.fin)}.</p>` : ""}<div style="margin-top:12px">${agenda.slice(0,8).map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("")}${agenda.length>8 ? `<details><summary>Ver ${agenda.length-8} actividades más</summary>${agenda.slice(8).map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}</p>`).join("")}</details>` : ""}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  const filas = agenda.map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("");
+  resultado.innerHTML = `<div class="c query"><b>📅 Esto figura en tu agenda (${agenda.length})</b>${intervalo ? `<p class="small">${escapar(intervalo.etiqueta)}</p>` : ""}<div style="margin-top:12px">${filas}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
 function mostrarSemanaCompleta(){
