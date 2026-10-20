@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r2 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r3 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r2</div>
+    <div class="version">Atlas v1.6.5.10-r3</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r2 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r3 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1484,9 +1484,21 @@ function mismaActividad(a,b){
   return coincideActividad(a,b);
 }
 
+// r3: clasificar ANTES de asociar un mensaje al formulario previo.
+// No interpretar consultas o instrucciones completas como datos de preparación.
+function esIntencionIndependiente(texto){
+  const n = normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "");
+  if(esConsultaAgendaNatural(n) || esContinuacionConsulta(n)) return true;
+  if(/^(?:que|cuales|cuando|donde|como|a que hora|mostrame|mostrar|decime|consultar|consulta|tenes|tengo|hay)\b/.test(n) && /(?:agenda|actividad|evento|turno|reunion|semana|mes|manana|hoy|hora|fecha|pendiente|finalizada)/.test(n)) return true;
+  if(/^(?:agendame|agenda|anota|anotame|crea|crear|elimina|eliminar|borra|borrame|cancela|cancelame|movi|move|moveme|cambia|cambiame|modifica|modificame|reprograma)\b/.test(n)) return true;
+  return false;
+}
+
 function esRespuestaAlPendiente(texto,pendiente){
   const normal = normalizar(texto);
   if(/\b(cancelar|cancela|dejalo|deja eso|olvidalo)\b/.test(normal)) return "cancelar";
+  // r3: la invitación a completar datos nunca captura una intención nueva.
+  if(pendiente?.tipo === "proactivo" && esIntencionIndependiente(texto)) return "nueva";
   if(pendiente?.tipo === "proactivo") return "respuesta";
   const complemento = interpretar(texto);
   const cambiaActividad = complemento.icono !== "📌" && !mismaActividad(pendiente.evento,complemento);
@@ -2139,6 +2151,15 @@ function ordenar(){
      /\b(?:dej(?:emos|a|alo|ala|arlo|arla) (?:la reunion |el evento |la actividad )?como estaba|mejor (?:dejemos|deja|dejalo|dejala)|no (?:cambies|modifiques) nada|olvidate del cambio|descarta (?:el|la) (?:cambio|propuesta))\b/.test(n)){
     cancelar();
     return;
+  }
+  // r3: una consulta nueva tiene prioridad sobre el completado opcional.
+  // No aplicar ni confirmar cambios pendientes por interpretar una pregunta.
+  if(esIntencionIndependiente(texto) &&
+     (conversacionPendiente || enriquecimientoPendiente || eventoPendiente)){
+    establecerConversacionPendiente(null);
+    enriquecimientoPendiente = null;
+    if(eventoPendiente?.accion === "crear") eventoPendiente = null;
+    if(consultaConContexto(texto)) return;
   }
   // Una consulta o su continuación no debe abrir una tarjeta de creación.
   if(!eventoPendiente && !conversacionPendiente && consultaConContexto(texto)) return;
@@ -3309,13 +3330,23 @@ async function guardarConPermiso(){
   const guardado = {...eventoPendiente};
   eventoPendiente = null;
 
-  if(!iniciarAcompanamientoProactivo(guardado)){
+  // r3: el evento ya está guardado; ofrecer ayuda sin abrir conversación activa.
+  establecerConversacionPendiente(null);
+  {
+    const sugerencia = tipoAcompanamientoProactivo(guardado) === "medico"
+      ? "Si necesitás llevar estudios, una orden o documentación, puedo ayudarte a prepararlos."
+      : tipoAcompanamientoProactivo(guardado) === "reunion"
+      ? "Si querés, podemos agregar si es presencial o virtual y cómo llegar."
+      : tipoAcompanamientoProactivo(guardado) === "viaje"
+      ? "Si querés, podemos completar el medio de transporte y los preparativos del viaje."
+      : "";
     registrarAccionCompletada(`Guardé ${guardado.titulo}.`,`
       <div class="c success">
         <b>✓ Listo, lo guardé</b>
         <div style="margin-top:12px">
           ${detalleEvento(guardado)}
         </div>
+        ${sugerencia ? `<div class="small" style="margin-top:10px">${escapar(sugerencia)}</div>` : ""}
 
         <button class="secondary" onclick="probarAviso(${guardado.id})">
           Probar ahora cómo será el aviso
