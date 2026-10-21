@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.8 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -338,7 +338,7 @@ hr{
   .kai-composer{box-sizing:border-box;width:100%;}
 }
 
-/* r6.8 — primera evolución visual: únicamente Home */
+/* r6.9 — primera evolución visual: únicamente Home */
 .atlas-home{padding-top:22px;padding-bottom:180px}
 .home-topline{display:flex;align-items:center;justify-content:space-between;margin:0 2px 22px;gap:12px}
 .home-brand{font-size:15px;letter-spacing:.18em;font-weight:850;color:#e2e8f0}
@@ -367,6 +367,28 @@ hr{
 .home-demo-details summary{cursor:pointer;font-size:12px;color:#94a3b8}.home-demo-content{font-size:12px;line-height:1.5;color:#cbd5e1}
 .atlas-home .home-kai-quick{max-width:520px}.atlas-home .home-kai-quick input{font-size:14px}
 @media(max-width:360px){.home-welcome{padding:22px 17px}.home-next-card{padding:17px}.home-service{padding:12px}}
+
+/* r6.9 — identidad visual del chat, sin modificar su motor de eventos */
+#k{padding-top:16px;background:radial-gradient(ellipse at 90% 0%,rgba(65,76,184,.17),transparent 55%)}
+#k .kai-sticky-header{background:linear-gradient(110deg,#18284b,#15213b);border:1px solid #33456b;border-radius:18px;padding:12px 14px;margin-bottom:14px}
+#k .kai-sticky-header h2{font-size:21px;letter-spacing:.3px;margin:0}
+#k .chat-history{gap:12px}
+#k .chat-row.kai .chat-bubble{background:#202c42;border-color:#354661}
+#k .chat-row.user .chat-bubble{background:linear-gradient(125deg,#275dd5,#344bc0);border-color:#4777e8}
+#k .chat-bubble{box-shadow:0 5px 16px rgba(0,0,0,.09)}
+#k #resultado .c{background:#1d2b41;border:1px solid #354866;border-radius:16px;line-height:1.5}
+#k #resultado .c.warn{border-color:#806640}
+#k .kai-composer{background:#142139;border:1px solid #354866;border-radius:18px;padding:10px;box-shadow:0 12px 30px rgba(0,0,0,.2)}
+#k #entrada{background:#0f1c31;border:1px solid #334969;border-radius:13px;min-height:48px;resize:none;line-height:1.4}
+#k .composer-actions{gap:8px}
+#k .composer-actions .primary{border-radius:12px}
+.kai-shortcuts{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 16px;padding:12px;background:#15243b;border:1px solid #354966;border-radius:15px}
+.kai-shortcuts-label{width:100%;font-size:10px;font-weight:800;letter-spacing:1.3px;color:#9fb3d1}
+.kai-shortcuts button{font-size:12px;padding:9px 11px;border-radius:10px;flex:1 1 auto}
+.home-smart-prep{border-top:1px solid rgba(175,196,245,.17);margin-top:12px;padding-top:11px;font-size:13px;color:#d6e5ff}
+.home-smart-prep b{display:block;margin-bottom:6px}
+.home-smart-item{padding:3px 0;color:#c3d5ef}
+
 </style>
 </head>
 
@@ -383,7 +405,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.8 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -406,7 +428,7 @@ hr{
 
 <section id="k" class="p">
   <div class="section-title-row kai-sticky-header">
-    <h2>Kai</h2>
+    <h2>✦ Kai <span style="font-size:11px;color:#a7b8d6;font-weight:400;display:block;margin-left:22px">Tu asistente en Atlas</span></h2>
     <button class="secondary compact-button" onclick="nuevoChat()">＋ Nuevo chat</button>
   </div>
 
@@ -425,7 +447,7 @@ hr{
 
   <div class="kai-composer" aria-label="Escribirle a Kai">
     <div id="conversationContext" class="conversation-context"></div>
-    <textarea id="entrada" rows="2" placeholder="Escribile a Kai o usá el micrófono..."></textarea>
+    <textarea id="entrada" rows="2" placeholder="Escribile a Kai…" aria-label="Mensaje para Kai"></textarea>
     <div class="composer-actions">
       <button id="micButtonBottom" class="mic-inline" onclick="escuchar()" aria-label="Hablar con Kai">🎙️</button>
       <button class="primary" onclick="ordenar()">Enviar a Kai</button>
@@ -475,7 +497,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.8 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2081,6 +2103,36 @@ function proponerAportePreparacion(texto){
 
 // r6: consultas de preparación se resuelven antes de las búsquedas generales.
 // La consulta nunca crea ni modifica eventos y no usa datos de otros eventos.
+
+// r6.9 — acciones rápidas contextuales: siempre generan una consulta/propuesta,
+// nunca editan la agenda sin confirmación explícita.
+function accionesRapidasEvento(evento){
+  const id=encodeURIComponent(String(evento.id));
+  return `<div class="kai-shortcuts" aria-label="Acciones para ${escapar(evento.titulo)}">
+    <span class="kai-shortcuts-label">¿QUÉ QUERÉS HACER?</span>
+    <button class="secondary" onclick="accionRapidaEvento('${id}','horario')">🕒 Cambiar horario</button>
+    <button class="secondary" onclick="accionRapidaEvento('${id}','preparacion')">📋 Preparativos</button>
+    <button class="secondary" onclick="accionRapidaEvento('${id}','recordatorio')">🔔 Recordatorio</button>
+    <button class="secondary" onclick="accionRapidaEvento('${id}','cancelar')">✕ Cancelar actividad</button>
+  </div>`;
+}
+function accionRapidaEvento(idCodificado,accion){
+  const id=decodeURIComponent(idCodificado);
+  const evento=obtenerAgenda().find(e=>String(e.id)===id);
+  if(!evento){document.getElementById('resultado').innerHTML='<div class="c warn">Esa actividad ya no está en tu agenda. No hice cambios.</div>';return;}
+  recordarEventoContexto(evento.id);
+  const salida=document.getElementById('resultado');
+  if(accion==='horario'){
+    salida.innerHTML=`<div class="c info"><b>Cambiar horario · ${escapar(evento.titulo)}</b><p>¿Para qué día y hora querés moverlo?</p><div class="small">Todavía no modifiqué nada. Escribime el nuevo horario.</div></div>`;
+  }else if(accion==='preparacion'){
+    salida.innerHTML=`<div class="c info"><b>Preparativos · ${escapar(evento.titulo)}</b><p>Decime qué querés agregar o quitar. Por ejemplo: «Agregame llevar documentos».</p><div class="small">No modifiqué nada.</div></div>`;
+  }else if(accion==='recordatorio'){
+    salida.innerHTML=`<div class="c info"><b>Recordatorio · ${escapar(evento.titulo)}</b><p>¿Cuánto tiempo antes querés que te lo recuerde?</p><div class="small">No modifiqué nada.</div></div>`;
+  }else if(accion==='cancelar'){
+    salida.innerHTML=`<div class="c warn"><b>Cancelar ${escapar(evento.titulo)}</b><p>Para evitar cancelaciones accidentales, escribí «Cancelá ${escapar(evento.titulo)}» y Kai te pedirá confirmación.</p><div class="small">No eliminé nada.</div></div>`;
+  }
+  document.getElementById('entrada').focus();
+}
 function consultarPreparacionDeActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
   const preguntaPreparacion= /\b(?:que (?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay) que (?:llevar|preparar)|que (?:llevo|llevar|preparo|preparar)|tengo que llevar algo|hay que llevar algo|debo llevar algo|necesito llevar algo|que (?:cosas|documentos|papeles) (?:tengo que )?llevar|que (?:preparacion|preparativos) (?:tengo|hay|necesito)|como (?:me )?preparo|que tengo que tener listo|me tengo que llevar algo)\b/.test(n);
@@ -2100,6 +2152,12 @@ function consultarPreparacionDeActividad(texto){
   }else if(/\b(?:viaje\s+a|viajar\s+a)\s+([a-z\u00f1]+)/.test(n)){
     const destino=n.match(/\b(?:viaje\s+a|viajar\s+a)\s+([a-z\u00f1]+)/)[1];
     candidatos=todos.filter(e=>normalizar(e.titulo).includes(destino) && /viaje|viajar/.test(normalizar(e.titulo)));
+  }else if(/\b(?:proxim[oa]|siguiente|primer[oa])\s+(?:turno|cita|reunion|actividad|evento)\b/.test(n)){
+    const tipo=/\b(?:turno|cita)\b/.test(n)?'turno':/\breunion\b/.test(n)?'reunion':'';
+    candidatos=todos.filter(e=>eventoCoincideConTipoContextual(e,tipo));
+    const futuros=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now())
+      .sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+    candidatos=futuros.length?[futuros[0]]:[];
   }else if(/\b(?:esa|esta|aquella)\s+(?:reunion|cita|actividad|turno|evento|viaje)\b/.test(n)){
     const tipo=/\breunion\b/.test(n)?'reunion':/\bviaje\b/.test(n)?'viaje':/\bturno\b/.test(n)?'turno':'';
     const ultimo=obtenerEventoContexto();
@@ -2138,7 +2196,7 @@ function consultarPreparacionDeActividad(texto){
   const ubicacion=e.ubicacion?`<p><b>Lugar:</b> ${escapar(String(e.ubicacion))}.</p>`:'';
   const sinDocumentos= /\b(?:llevar|documentos|papeles)\b/.test(n) && !items.some(x=>/document|estudio|orden|papel|dni|credencial/i.test(String(x)))
     ? '<p>No tengo documentación específica anotada para llevar.</p>':'';
-  resultado.innerHTML=`<div class="c query"><b>Para ${escapar(e.titulo)} (${escapar(fechaBonita(e.fecha))}):</b>${listado}${traslado}${ubicacion}${sinDocumentos}</div>`;
+  resultado.innerHTML=`<div class="c query"><b>Para ${escapar(e.titulo)} (${escapar(fechaBonita(e.fecha))}):</b>${listado}${traslado}${ubicacion}${sinDocumentos}</div>${accionesRapidasEvento(e)}`;
   return true;
 }
 
@@ -3945,23 +4003,27 @@ function actualizarSaludoHome(){
 function actualizarProximo(){
   actualizarSaludoHome();
   const ahora = new Date();
-  const proximos = obtenerAgenda()
-    .map(evento => {
-      const [h,m] = evento.hora.split(':').map(Number);
-      const fecha = fechaDesdeISO(evento.fecha);
-      fecha.setHours(h,m,0,0);
-      return {...evento,momento:fecha};
-    })
-    .filter(evento => evento.momento >= ahora)
-    .sort((a,b) => a.momento-b.momento);
-  const caja = document.getElementById('proximoEvento');
-  if(!caja) return;
-  if(proximos.length === 0){
-    caja.innerHTML = '<div class="home-next-heading">PRÓXIMA ACTIVIDAD</div><div class="home-next-title">No hay actividades próximas</div><div class="home-next-meta">Tu agenda está libre por ahora. Podés organizar tu próximo plan con Kai.</div>';
+  const proximos = obtenerAgenda().map(evento=>{
+    const inicio=fechaDesdeISO(evento.fecha);
+    const [h,m]=evento.hora.split(':').map(Number);
+    inicio.setHours(h,m,0,0);
+    const fin=new Date(inicio.getTime()+Number(evento.duracion||60)*60000);
+    return {...evento,momento:inicio,fin};
+  }).filter(e=>e.fin>ahora).sort((a,b)=>a.momento-b.momento);
+  const caja=document.getElementById('proximoEvento');
+  if(!caja)return;
+  if(!proximos.length){
+    caja.innerHTML='<div class="home-next-heading">LO IMPORTANTE AHORA</div><div class="home-next-title">No hay actividades próximas</div><div class="home-next-meta">Tu agenda está libre por ahora.</div>';
     return;
   }
-  const evento = proximos[0];
-  caja.innerHTML = `<div class="home-next-heading">PRÓXIMA ACTIVIDAD</div><div class="home-next-title">${escapar(evento.icono || '📅')} ${escapar(evento.titulo)}</div><div class="home-next-meta">${mayuscula(fechaBonita(evento.fecha))} · ${escapar(evento.hora)}</div><div class="home-next-note">Información tomada de tu agenda</div>`;
+  const e=proximos[0],enCurso=e.momento<=ahora;
+  const preparativos=Array.isArray(e.preparacion)?e.preparacion.filter(Boolean):[];
+  const notas=preparativos.slice(0,2).map(x=>`<div class="home-smart-item">✓ ${escapar(x)}</div>`).join('');
+  caja.innerHTML=`<div class="home-next-heading">${enCurso?'ACTIVIDAD EN CURSO':'PRÓXIMA ACTIVIDAD'}</div>
+    <div class="home-next-title">${escapar(e.icono||'📅')} ${escapar(e.titulo)}</div>
+    <div class="home-next-meta">${mayuscula(fechaBonita(e.fecha))} · ${escapar(e.hora)}${enCurso?' · En curso':''}</div>
+    ${notas?`<div class="home-smart-prep"><b>Antes de salir</b>${notas}${preparativos.length>2?`<div class="home-smart-item">+ ${preparativos.length-2} preparativos más</div>`:''}</div>`:''}
+    <div class="home-next-note">Información de tu agenda · Sin datos de tráfico o clima en vivo</div>`;
 }
 
 function abrirAgenda(){
@@ -3981,6 +4043,12 @@ function reiniciarPrueba(){
   actualizarProximo();
 }
 
+document.getElementById('entrada').addEventListener('keydown',event=>{
+  if(event.key==='Enter' && !event.shiftKey && !event.isComposing){
+    event.preventDefault();
+    ordenar();
+  }
+});
 inicializarAgenda();
 renderAgenda();
 actualizarProximo();
