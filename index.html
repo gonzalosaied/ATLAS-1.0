@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.3 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.4 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.3 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.4 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.3 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.4 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2242,6 +2242,68 @@ function continuarAccionRapida(texto){
   return true;
 }
 
+
+// r6.9.4: distinguir la consulta de avisos de una consulta general de agenda.
+function consultarAvisosActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const consulta=/\b(?:que|cuales|cuantos)\s+(?:avisos|recordatorios)\s+(?:tengo|hay|estan|tenemos)\b/.test(n)
+    || /\b(?:cuando|a que hora|con cuanto tiempo)\s+(?:me\s+)?(?:vas a\s+)?(?:recordar|avisar|recordas|avisas)\b/.test(n)
+    || /\b(?:que|cuales)\s+(?:avisos|recordatorios)\s+(?:hay|tiene)\b/.test(n);
+  if(!consulta) return false;
+  const todos=obtenerAgenda();
+  const reunion=n.match(/\breunion\s+con\s+([a-zñ]+)(?:\s+(?!de\b|del\b|el\b|la\b|hoy\b|manana\b)([a-zñ]+))?/);
+  let candidatos=[];
+  if(reunion){
+    const persona=[reunion[1],reunion[2]].filter(Boolean).join(" ");
+    candidatos=todos.filter(e=>normalizar(e.titulo).includes("reunion con "+persona));
+  }else if(/\b(?:dentista|odontologo)\b/.test(n)){
+    candidatos=todos.filter(e=>/dentista|odontologo/.test(normalizar(e.titulo)));
+  }else if(/\b(?:futbol|gimnasio|viaje)\b/.test(n)){
+    candidatos=todos.filter(e=>/\b(?:futbol|gimnasio|viaje)\b/.test(normalizar(e.titulo)) && n.includes(normalizar(e.titulo).split(" ")[0]));
+  }else{
+    const contexto=obtenerEventoContexto();
+    if(contexto) candidatos=[contexto];
+  }
+  if(/\bmanana\b/.test(n)){
+    const d=new Date();d.setDate(d.getDate()+1);
+    candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(d));
+  }else if(/\bhoy\b/.test(n)){
+    candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(new Date()));
+  }
+  const resultado=document.getElementById("resultado");
+  if(!candidatos.length){
+    resultado.innerHTML='<div class="c query">No encontré la actividad para consultar sus avisos. ¿Cuál querés revisar?</div>';
+    return true;
+  }
+  if(candidatos.length>1){
+    const futuros=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now())
+      .sort((a,b)=>momentoEvento(a,true)-momentoEvento(b,true));
+    if(futuros.length)candidatos=[futuros[0]];
+    else{
+      resultado.innerHTML='<div class="c query">Encontré varias actividades anteriores. Decime de qué fecha querés consultar los recordatorios.</div>';
+      return true;
+    }
+  }
+  const e=candidatos[0];
+  recordarEventoContexto(e.id);
+  const avisos=normalizarAvisos(e);
+  const detalles=avisos.length?avisos.map(m=>{
+    const instante=new Date(momentoEvento(e,true).getTime()-m*60000);
+    const hora=String(instante.getHours()).padStart(2,"0")+":"+String(instante.getMinutes()).padStart(2,"0");
+    return `<li>${escapar(etiquetaAviso(m))} (${hora})</li>`;
+  }).join(""):"";
+  resultado.innerHTML=`<div class="c query"><b>Recordatorios de ${escapar(e.titulo)}</b><p>${escapar(fechaBonita(e.fecha))} a las ${escapar(e.hora)}.</p>${avisos.length?`<ul>${detalles}</ul>`:"<p>No hay avisos configurados.</p>"}<div class="small">Estos avisos están registrados en Atlas; su entrega depende de las notificaciones disponibles.</div></div>`;
+  return true;
+}
+// r6.9.4: "elimina la reunión" nunca significa quitar un preparativo.
+function pedidoExplicitoEliminarActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const verbo=/\b(?:elimina(?:me)?|eliminar|borra(?:me)?|borrar|cancela(?:me)?|cancelar)\b/.test(n);
+  const objeto=/\b(?:reunion|turno|cita|evento|actividad|partido|futbol|gimnasio|viaje|clase)\b/.test(n);
+  const preparativo=/\b(?:preparativo|preparacion|documentos|estudios|combustible|llevar)\b/.test(n);
+  return verbo && objeto && !preparativo;
+}
+
 function consultarPreparacionDeActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
   const preguntaPreparacion= /\b(?:que (?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay) que (?:llevar|preparar)|que (?:llevo|llevar|preparo|preparar)|tengo que llevar algo|hay que llevar algo|debo llevar algo|necesito llevar algo|que (?:cosas|documentos|papeles) (?:tengo que )?llevar|que (?:preparacion|preparativos) (?:tengo|hay|necesito)|como (?:me )?preparo|que tengo que tener listo|me tengo que llevar algo)\b/.test(n);
@@ -2620,6 +2682,15 @@ function ordenar(){
     return;
   }
 
+  // Intención explícita sobre el evento: antes de interpretar contexto o preparativos.
+  if(pedidoExplicitoEliminarActividad(texto)){
+    accionRapidaPendiente=null;
+    establecerConversacionPendiente(null);
+    enriquecimientoPendiente=null;
+    prepararEliminacion(interpretar(texto));
+    return;
+  }
+  if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
   if(consultarDuracionActividad(texto)) return;
