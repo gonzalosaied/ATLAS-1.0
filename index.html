@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.1 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6</div>
+    <div class="version">Atlas v1.6.5.10-r6.1</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.1 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2002,6 +2002,64 @@ function consultarPreparacionDeActividad(texto){
   return true;
 }
 
+// r6.1: preguntas de duración sobre una actividad, con referencia explícita o contextual.
+// Se resuelven como consultas, nunca como solicitudes de agendar.
+function consultarDuracionActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const pregunta=/\b(?:cuanto(?:s)?\s+(?:tiempo|horas?|minutos?)\s+(?:dura|durara|tengo|son|lleva)|cuanto\s+dura|que\s+duracion\s+tiene|de\s+cuanto\s+tiempo\s+es|cuanto\s+tiempo\s+(?:lleva|dura)|a\s+que\s+hora\s+(?:termina|finaliza|acaba))\b/.test(n);
+  if(!pregunta) return false;
+  const resultado=document.getElementById("resultado");
+  const todos=obtenerAgenda();
+  let candidatos=[];
+  const nombrada=n.match(/\breunion\s+con\s+([a-zñ]+(?:\s+[a-zñ]+)?)/);
+  if(nombrada){
+    const persona=nombrada[1].replace(/\b(?:manana|hoy|pasado|el|la|del)\b.*$/,"").trim();
+    candidatos=todos.filter(e=>normalizar(e.titulo).includes("reunion con "+persona));
+  }else if(/\b(?:dentista|odontologo)\b/.test(n)){
+    candidatos=todos.filter(e=>/\b(?:dentista|odontologo)\b/.test(normalizar(e.titulo)));
+  }else if(/\b(?:medico|doctora?|turno medico)\b/.test(n)){
+    candidatos=todos.filter(e=>/\b(?:medico|doctor|doctora|hospital|clinica)\b/.test(normalizar(e.titulo)));
+  }else if(/\b(?:esa|esta|aquella)\s+(?:reunion|cita|actividad|turno|evento|viaje)\b/.test(n)){
+    const tipo=/\breunion\b/.test(n)?"reunion":/\bviaje\b/.test(n)?"viaje":/\bturno\b/.test(n)?"turno":"";
+    const ultimo=obtenerEventoContexto();
+    if(ultimo && eventoCoincideConTipoContextual(ultimo,tipo)) candidatos=[ultimo];
+    else if(tipo) candidatos=todos.filter(e=>eventoCoincideConTipoContextual(e,tipo));
+  }else{
+    const ultimo=obtenerEventoContexto();
+    if(ultimo) candidatos=[ultimo];
+  }
+  const fechaMencionada=/\b(?:hoy|manana|pasado manana)\b/.exec(n);
+  if(fechaMencionada){
+    const fecha=new Date();
+    fecha.setDate(fecha.getDate()+(fechaMencionada[0]==="manana"?1:fechaMencionada[0]==="pasado manana"?2:0));
+    candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(fecha));
+  }
+  if(candidatos.length>1){
+    const futuras=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now()).sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+    if(futuras.length) candidatos=[futuras[0]];
+    else {
+      resultado.innerHTML='<div class="c query">Encontré varias actividades anteriores. ¿De qué fecha hablás?</div>';
+      return true;
+    }
+  }
+  if(!candidatos.length){
+    resultado.innerHTML='<div class="c query">¿De qué actividad querés saber la duración? Decime cuál y la busco.</div>';
+    return true;
+  }
+  const e=candidatos[0];
+  recordarEventoContexto(e.id);
+  const duracion=Number(e.duracion||60);
+  const horas=Math.floor(duracion/60), minutosRestantes=duracion%60;
+  const partes=[horas?`${horas} ${horas===1?"hora":"horas"}`:"",minutosRestantes?`${minutosRestantes} ${minutosRestantes===1?"minuto":"minutos"}`:""].filter(Boolean);
+  const fin=aHora(minutos(e.hora)+duracion);
+  const pideFin=/\ba que hora\s+(?:termina|finaliza|acaba)\b/.test(n);
+  const mensaje=pideFin
+    ? `${escapar(e.titulo)} termina a las <b>${escapar(fin)}</b>.`
+    : `${escapar(e.titulo)} dura <b>${partes.join(" y ")}</b>, de ${escapar(e.hora)} a ${escapar(fin)}.`;
+  resultado.innerHTML=`<div class="c query">${mensaje}</div>`;
+  return true;
+}
+
 function consultarReferenciaConversacional(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "").trim();
   // Solo preguntas elípticas: una actividad mencionada explícitamente debe buscarse
@@ -2243,6 +2301,7 @@ function ordenar(){
   }
 
   if(consultarPreparacionDeActividad(texto)) return;
+  if(consultarDuracionActividad(texto)) return;
   if(consultarReferenciaConversacional(texto)) return;
   // Preguntas sobre un conflicto pendiente conservan el borrador y reciben opciones.
   if(responderAlternativasConflicto(texto)) return;
