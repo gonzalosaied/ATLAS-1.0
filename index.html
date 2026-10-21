@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.6.1 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.7 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.6.1</div>
+    <div class="version">Atlas v1.6.5.10-r6.7</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.6.1 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.7 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2721,18 +2721,53 @@ function procesarCreacion(evento){
 }
 
 function mostrarMultiples(eventos){
-  eventosPendientes = eventos;
-  const incompletos = eventos.filter(x => !x.fecha || !x.hora);
+  eventosPendientes = eventos.map(x=>({...x}));
+  const incompletos = eventosPendientes.filter(x => !x.fecha || !x.hora);
   if(incompletos.length){
-    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Detecté varias actividades, pero falta información.</b><p>${eventos.map((x,i) => `${i+1}. ${escapar(x.titulo)} — ${x.fecha ? fechaBonita(x.fecha) : "día pendiente"} · ${x.hora || "hora pendiente"}`).join("<br>")}</p><div class="small">No guardé nada. Decímelas nuevamente aclarando los datos que faltan.</div></div>`;
+    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Detecté varias actividades, pero falta información.</b><p>${eventosPendientes.map((x,i) => `${i+1}. ${escapar(x.titulo)} — ${x.fecha ? fechaBonita(x.fecha) : "día pendiente"} · ${x.hora || "hora pendiente"}`).join("<br>")}</p><div class="small">No guardé nada. Decímelas nuevamente aclarando los datos que faltan.</div></div>`;
     return;
   }
-  const cruces = conflictosInternos(eventos);
-  const externos = eventos.flatMap(evento => buscarConflictos(evento).map(existente => [evento,existente]));
+  const cruces = conflictosInternos(eventosPendientes);
+  const externos = eventosPendientes.flatMap(evento => buscarConflictos(evento).map(existente => [evento,existente]));
   const resumenCruces = cruces.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> (${a.hora}–${horaFinVisible(minutos(a.hora)+a.duracion)}) se superpone con <b>${escapar(b.titulo)}</b> (${b.hora}–${horaFinVisible(minutos(b.hora)+b.duracion)}).</div>`).join("");
   const resumenExternos = externos.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> se superpone con un evento ya guardado: <b>${escapar(b.titulo)}</b> (${b.hora}–${horaFinVisible(minutos(b.hora)+b.duracion)}).</div>`).join("");
   const totalCruces = cruces.length+externos.length;
-  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventos.length} eventos</b><div style="margin-top:12px">${eventos.map(detalleEvento).join("<hr>")}</div></div>${totalCruces ? `<div class="c warn"><b>⚠️ Encontré ${totalCruces} ${totalCruces === 1 ? "superposición" : "superposiciones"}.</b>${resumenCruces}${resumenExternos}<div class="small">No guardé nada todavía.</div></div>` : `<div class="c success"><b>No encontré conflictos entre las actividades ni con tu agenda.</b></div>`}<div class="c info"><p>¿Querés guardar igualmente los ${eventos.length} eventos?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar todos</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+  let alternativas = "";
+  // Sólo ofrecemos movimientos seguros para un par de actividades nuevas.
+  // Si hay conflictos con agenda existente, primero se deben resolver aparte.
+  if(cruces.length===1 && !externos.length && eventosPendientes.length===2){
+    const [a,b]=cruces[0];
+    const inicioA=Date.parse(a.fecha+"T"+a.hora+":00");
+    const inicioB=Date.parse(b.fecha+"T"+b.hora+":00");
+    const primero=inicioA<=inicioB?a:b, segundo=primero===a?b:a;
+    const finPrimero=Date.parse(primero.fecha+"T"+primero.hora+":00")+primero.duracion*60000;
+    const inicioSegundo=Date.parse(segundo.fecha+"T"+segundo.hora+":00");
+    const solapamiento=Math.round((finPrimero-inicioSegundo)/60000);
+    if(solapamiento>0){
+      const proponer=(indice,fechaMs,etiqueta)=>{
+        const fecha=new Date(fechaMs);
+        const fechaISO=`${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,"0")}-${String(fecha.getDate()).padStart(2,"0")}`;
+        const hora=`${String(fecha.getHours()).padStart(2,"0")}:${String(fecha.getMinutes()).padStart(2,"0")}`;
+        return `<button class="secondary" onclick="proponerAjusteMultiples(${indice},'${fechaISO}','${hora}')">${etiqueta} (${fechaBonita(fechaISO)} · ${hora})</button>`;
+      };
+      const indiceSegundo=eventosPendientes.indexOf(segundo), indicePrimero=eventosPendientes.indexOf(primero);
+      alternativas=`<div class="c info"><b>💡 Opciones para resolver los ${solapamiento} minutos de superposición</b>
+      <p>Podés elegir una propuesta. Primero te mostraré los nuevos horarios y volveré a comprobar los conflictos.</p>
+      ${proponer(indiceSegundo,finPrimero,`Mover ${escapar(segundo.titulo)} después de ${escapar(primero.titulo)}`)}
+      ${proponer(indicePrimero,inicioSegundo-primero.duracion*60000,`Adelantar ${escapar(primero.titulo)}`)}
+      <div class="small">Las alternativas evitan la superposición horaria; todavía no incluyen tiempos de traslado.</div></div>`;
+    }
+  }
+  document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventosPendientes.length} eventos</b><div style="margin-top:12px">${eventosPendientes.map(detalleEvento).join("<hr>")}</div></div>${totalCruces ? `<div class="c warn"><b>⚠️ Encontré ${totalCruces} ${totalCruces === 1 ? "superposición" : "superposiciones"}.</b>${resumenCruces}${resumenExternos}<div class="small">No guardé nada todavía.</div></div>` : `<div class="c success"><b>No encontré conflictos entre las actividades ni con tu agenda.</b></div>`}${alternativas}<div class="c info"><p>${totalCruces ? "¿Querés conservar los horarios con el conflicto?" : `¿Querés guardar los ${eventosPendientes.length} eventos?`}</p><button class="primary" onclick="guardarMultiples()">${totalCruces ? "Sí, guardar con conflicto" : "Sí, guardar todos"}</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
+}
+
+function proponerAjusteMultiples(indice,fecha,hora){
+  if(!eventosPendientes.length || indice<0 || indice>=eventosPendientes.length) return;
+  const propuesta=eventosPendientes.map(x=>({...x}));
+  propuesta[indice].fecha=fecha;
+  propuesta[indice].hora=hora;
+  // Se mantiene el borrador; no se modifica ni guarda la agenda.
+  mostrarMultiples(propuesta);
 }
 
 function conflictosInternos(eventos){
