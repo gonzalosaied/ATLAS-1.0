@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.4 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.5 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.4</div>
+    <div class="version">Atlas v1.6.5.10-r6.5</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.4 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.5 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1702,21 +1702,24 @@ function limpiarNombrePreparacion(texto){
 }
 
 function quitarDePreparacion(lista,objetivo){
-  const buscado = limpiarNombrePreparacion(objetivo);
-  const resultado = [];
-  let encontro = false;
+  const limpiar = x=>normalizar(String(x||""))
+    .replace(/^(?:llevar|traer|presentar|preparar)\\s+/,"")
+    .replace(/\\b(?:el|la|los|las|un|una|unos|unas|mi|mis|lo de|de|a la|al)\\b/g," ")
+    .replace(/\\b(?:reunion|turno|dentista|martin|auto)\\b/g," ")
+    .replace(/\\s+/g," ").trim();
+  const buscado=limpiar(objetivo);
+  if(!buscado || buscado.length<4) return {lista:[...lista],encontro:false};
+  const listaNueva=[];
+  let encontro=false;
   for(const entrada of lista){
-    const contenido = String(entrada).replace(/^\s*llevar\s+/i,"");
-    const partes = contenido.split(/\s*,\s*|\s+y\s+/i).map(x => x.trim()).filter(Boolean);
-    const restantes = partes.filter(parte => {
-      const actual = limpiarNombrePreparacion(parte);
-      const coincide = actual.includes(buscado) || buscado.includes(actual);
-      if(coincide) encontro = true;
-      return !coincide;
-    });
-    if(restantes.length) resultado.push(`llevar ${restantes.join(", ")}`);
+    const actual=limpiar(entrada);
+    const tokens=buscado.split(" ").filter(x=>x.length>3);
+    const coincide=preparativosEquivalentes(entrada,objetivo) ||
+      (tokens.length>0 && tokens.every(t=>actual.split(" ").some(a=>a===t || (t.length>5 && a.startsWith(t.slice(0,-1))))));
+    if(coincide) encontro=true;
+    else listaNueva.push(entrada);
   }
-  return {lista:resultado,encontro};
+  return {lista:listaNueva,encontro};
 }
 
 function eventoCoincideConTipoContextual(evento,tipo){
@@ -1823,7 +1826,8 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
   enriquecimientoPendiente = {
     original:copiarEventoConAvisos(original),
     actualizado,
-    sugerencias:actualizado.transporte === "auto" ? ["combustible","documentacion"] : [],
+    sugerencias:datos.transporte && datos.transporte !== original.transporte && actualizado.transporte === "auto"
+      ? ["combustible","documentacion"] : [],
     removidas,
     quitarPreparacion:datos.quitarPreparacion || ""
   };
@@ -1974,6 +1978,7 @@ function preparativosEquivalentes(a,b){
 function proponerAportePreparacion(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
   if(/[¿?]/.test(texto)) return false;
+  if(/\\b(?:elimina(?:me|le|lo)?|quita(?:me|le|lo)?|saca(?:me|le|lo)?|borra(?:me|le|lo)?|eliminar|quitar|sacar|borrar)\\b/.test(n)) return false;
   // No confundir "tengo que llevar los estudios" (aporte) con
   // "¿qué tengo que llevar?" (consulta). "que llevar" es parte de ambas frases.
   const esConsulta=/^(?:y\\s+)?(?:que|como|cuales|cuantos|tengo que llevar algo|debo llevar algo|necesito llevar algo|hay que llevar algo)\\b/.test(n);
