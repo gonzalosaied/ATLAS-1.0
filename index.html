@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.3 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.4 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.3</div>
+    <div class="version">Atlas v1.6.5.10-r6.4</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.3 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.4 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1791,9 +1791,14 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
      limpiarNombrePreparacion(datos.preparacion) === limpiarNombrePreparacion(datos.quitarPreparacion)){
     datos = {...datos,preparacion:""};
   }
-  const preparacionConDato = datos.preparacion && !preparacionBase.some(x => normalizar(x) === normalizar(datos.preparacion))
-    ? [...preparacionBase,datos.preparacion]
-    : preparacionBase;
+  const aportes = Array.isArray(datos.preparaciones) ? datos.preparaciones :
+    (datos.preparacion ? [datos.preparacion] : []);
+  const preparacionConDato = [...preparacionBase];
+  for(const aporte of aportes){
+    if(!preparacionConDato.some(x=>preparativosEquivalentes(x,aporte))){
+      preparacionConDato.push(aporte);
+    }
+  }
   const removidas = preparacionAnterior.filter(x => !preparacionConDato.includes(x));
   const actualizado = copiarEventoConAvisos({
     ...original,
@@ -1939,6 +1944,31 @@ function extraerAvisoContextual(textoNormalizado){
   return match[2].startsWith("hora") ? cantidad*60 : cantidad;
 }
 
+// r6.4: dividir tareas coordinadas y comparar el sentido básico de los preparativos.
+// Estas reglas no cambian la agenda: solo construyen la propuesta.
+function separarPreparativos(texto){
+  let t=String(texto||"").trim().replace(/[.!?;]+$/,"");
+  t=t.replace(/^llevar\s+/i,"llevar ");
+  // Separar cuando aparece otra acción; no separar "seguro y RTO".
+  const partes=t.split(/\s*,\s*(?=(?:llevar|revisar|cargar|preparar|buscar|comprar|imprimir|presentar)\b)|\s+y\s+(?=(?:llevar|revisar|cargar|preparar|buscar|comprar|imprimir|presentar)\b)/i)
+    .map(x=>x.trim()).filter(Boolean);
+  return partes.length?partes:[t];
+}
+function clavePreparativo(texto){
+  let n=normalizar(String(texto||""))
+    .replace(/\b(?:del|de la|de los|de las)\s+(?:auto|coche|vehiculo|turno|reunion)\b/g," ")
+    .replace(/\b(?:el|la|los|las|un|una|unos|unas|mi|mis|que|me|hice)\b/g," ")
+    .replace(/\s+/g," ").trim();
+  if(/\b(?:combustible|nafta|gasolina)\b/.test(n) && /\b(?:revisar|chequear|controlar|ver|cargar)\b/.test(n))
+    return "combustible:"+(/\bcargar\b/.test(n)?"cargar":"revisar");
+  n=n.replace(/^(?:tengo que |debo |necesito )?(?:llevar|traer|presentar)\s+/,"llevar ")
+    .replace(/^(?:chequear|controlar|verificar)\s+/,"revisar ");
+  return n;
+}
+function preparativosEquivalentes(a,b){
+  const x=clavePreparativo(a),y=clavePreparativo(b);
+  return !!x && x===y;
+}
 // r6.2: los aportes de preparación tienen prioridad sobre las consultas.
 // El evento existente se propone para actualizar; nunca se guarda sin confirmar.
 function proponerAportePreparacion(texto){
@@ -1986,7 +2016,8 @@ function proponerAportePreparacion(texto){
   const elegido=candidatos[0];
   recordarEventoContexto(elegido.id);
   mostrarConfirmacionEnriquecimiento(elegido,{
-    preparacion, tipo, textoOriginal:texto, ubicacion:"", transporte:"", duracion:null, quitarPreparacion:""
+    preparacion:"", preparaciones:separarPreparativos(preparacion), tipo, textoOriginal:texto,
+    ubicacion:"", transporte:"", duracion:null, quitarPreparacion:""
   });
   return true;
 }
