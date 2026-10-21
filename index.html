@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.2 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.3 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.2</div>
+    <div class="version">Atlas v1.6.5.10-r6.3</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.2 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.3 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1944,8 +1944,10 @@ function extraerAvisoContextual(textoNormalizado){
 function proponerAportePreparacion(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
   if(/[¿?]/.test(texto)) return false;
-  if(/\b(?:que tengo que llevar|que debo llevar|que necesito llevar|tengo que llevar algo|que llevar|que preparo)\b/.test(n) &&
-     !/\b(?:agrega|agregame|anota|anotame|inclui|sumale|pone|poneme)\b/.test(n)) return false;
+  // No confundir "tengo que llevar los estudios" (aporte) con
+  // "¿qué tengo que llevar?" (consulta). "que llevar" es parte de ambas frases.
+  const esConsulta=/^(?:y\\s+)?(?:que|como|cuales|cuantos|tengo que llevar algo|debo llevar algo|necesito llevar algo|hay que llevar algo)\\b/.test(n);
+  if(esConsulta) return false;
   const esPedido=/\b(?:agrega(?:me|le|lo)?|agregar|anota(?:me|le|lo)?|anotar|inclui(?:me|le)?|sumale|pone(?:me|le)?|recordame)\b/.test(n);
   const esAfirmacion=/\b(?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay)\s+que\s+llevar\b/.test(n) ||
     /\b(?:no me tengo que olvidar de llevar|tambien llevo)\b/.test(n);
