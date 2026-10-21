@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.4 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.5 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.4 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.5 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.4 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.5 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2288,7 +2288,8 @@ function consultarAvisosActividad(texto){
   recordarEventoContexto(e.id);
   const avisos=normalizarAvisos(e);
   const detalles=avisos.length?avisos.map(m=>{
-    const instante=new Date(momentoEvento(e,true).getTime()-m*60000);
+    // Los avisos se calculan desde el INICIO de la actividad, no desde su final.
+    const instante=new Date(momentoEvento(e,false).getTime()-m*60000);
     const hora=String(instante.getHours()).padStart(2,"0")+":"+String(instante.getMinutes()).padStart(2,"0");
     return `<li>${escapar(etiquetaAviso(m))} (${hora})</li>`;
   }).join(""):"";
