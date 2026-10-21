@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.5 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.6 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.5</div>
+    <div class="version">Atlas v1.6.5.10-r6.6</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.5 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.6 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1235,7 +1235,7 @@ function generarRecurrencia(evento){
 function interpretarMultiples(texto){
   const limpio = normalizar(texto);
   if(/\b(no\s+mejor|quise decir|en realidad|perdon)\b/.test(limpio)) return [];
-  const marcadores = [...limpio.matchAll(/\b(futbol|gimnasio|gym|reunion|me\s+junto|juntarme|dentista|odontolog\w*|supermercado|compras|medico|doctora?|mecanico|parcial|examen|prueba|asado)\b/g)];
+  const marcadores = [...limpio.matchAll(/\b(futbol|gimnasio|gym|reunion|me\s+junto|juntarme|dentista|odontolog\w*|supermercado|compras|medico|doctora?|mecanico|parcial|examen|prueba|asado|cena(?:r)?|almuerzo|desayuno)\b/g)];
   if(marcadores.length < 2) return [];
   const fechaGeneral = extraerFecha(limpio,extraerHora(limpio));
   const periodo = limpio.match(/de\s+la\s+(tarde|noche|manana|madrugada)/)?.[1] || "";
@@ -1677,7 +1677,17 @@ function extraerContextoNuevo(texto){
   // "no necesito llevar la orden, solamente los estudios" no agrega la orden.
   const negacionLlevar = /\bno\s+(?:necesito|debo|tengo\s+que|hay\s+que)\s+llevar\s+/i.test(texto);
   if(negacionLlevar) preparacion = "";
-  const quitarPreparacion = normal.match(/\b(?:quita|quitar|saca|sacar|elimina|eliminar|borra|borrar|no\s+(?:necesito|tengo\s+que)\s+llevar)\s+(?:de\s+)?(?:la\s+|el\s+|los\s+|las\s+)?(.+?)(?=\s+de\s+la\s+preparacion|\s+del?\s+(?:viaje|reunion|turno)|[.,;]|$)/i)?.[1]?.trim() || "";
+  // r6.5.1: identificar eliminación ANTES de extraer aportes afirmativos.
+  const ordenQuitar = normal.match(/\b(?:eliminame|eliminale|elimina|eliminar|quitame|quita|quitar|sacame|saca|sacar|borrame|borra|borrar)\s+(.+)$/i);
+  const noLlevar = normal.match(/\bno\s+(?:necesito|debo|tengo\s+que)\s+llevar\s+(.+)$/i);
+  let quitarPreparacion = ordenQuitar?.[1] || noLlevar?.[1] || "";
+  if(quitarPreparacion){
+    quitarPreparacion = quitarPreparacion
+      .replace(/^(?:(?:lo\s+de|que|el|la|los|las)\s+)+/, "")
+      .replace(/\s+(?:de\s+la\s+preparacion|de\s+los\s+preparativos|del?\s+(?:turno|dentista|reunion|viaje)|a\s+la\s+reunion)(?:\s+con\s+\w+)?\s*$/, "")
+      .trim();
+    preparacion = "";
+  }
   let transporte = "";
   const transporteDetectado = normal.match(/\b(?:voy|vamos|viajo|viajamos|iremos|vamos\s+a\s+ir)\s+en\s+(auto|coche|camioneta|colectivo|bondi|micro|taxi|remis|uber|bicicleta|bici|moto|avion)\b/)?.[1];
   if(transporteDetectado){
@@ -1713,7 +1723,7 @@ function quitarDePreparacion(lista,objetivo){
   let encontro=false;
   for(const entrada of lista){
     const actual=limpiar(entrada);
-    const tokens=buscado.split(" ").filter(x=>x.length>3);
+    const tokens=buscado.split(" ").filter(x=>x.length>3 && !["llevar","preparar","revisar"].includes(x));
     const coincide=preparativosEquivalentes(entrada,objetivo) ||
       (tokens.length>0 && tokens.every(t=>actual.split(" ").some(a=>a===t || (t.length>5 && a.startsWith(t.slice(0,-1))))));
     if(coincide) encontro=true;
@@ -1751,6 +1761,7 @@ function candidatosParaContexto(datos){
   if(datos.quitarPreparacion){
     const conEseDato = compatibles.filter(x => quitarDePreparacion(Array.isArray(x.preparacion) ? x.preparacion : [],datos.quitarPreparacion).encontro);
     if(conEseDato.length) compatibles = conEseDato;
+    else return [];
   }
   const ultimo = obtenerEventoContexto();
   if(ultimo && compatibles.some(x => String(x.id) === String(ultimo.id))) return [ultimo];
@@ -1760,7 +1771,9 @@ function candidatosParaContexto(datos){
 function prepararEnriquecimientoContextual(datos){
   const candidatos = candidatosParaContexto(datos);
   if(!candidatos.length){
-    document.getElementById("resultado").innerHTML = `<div class="c warn"><b>Entendí la nueva información, pero no encontré el evento al que pertenece.</b><p>Decime de qué reunión, viaje o turno estás hablando.</p><div class="small">No creé ni modifiqué nada.</div></div>`;
+    document.getElementById("resultado").innerHTML = datos.quitarPreparacion
+      ? `<div class="c warn"><b>No encontré ese preparativo en el evento de referencia.</b><p>Podés consultar primero los preparativos y decirme cuál querés quitar.</p><div class="small">No eliminé ni agregué nada.</div></div>`
+      : `<div class="c warn"><b>Entendí la nueva información, pero no encontré el evento al que pertenece.</b><p>Decime de qué reunión, viaje o turno estás hablando.</p><div class="small">No creé ni modifiqué nada.</div></div>`;
     return;
   }
   if(candidatos.length > 1){
@@ -1794,8 +1807,9 @@ function mostrarConfirmacionEnriquecimiento(original,datos){
      limpiarNombrePreparacion(datos.preparacion) === limpiarNombrePreparacion(datos.quitarPreparacion)){
     datos = {...datos,preparacion:""};
   }
-  const aportes = Array.isArray(datos.preparaciones) ? datos.preparaciones :
-    (datos.preparacion ? [datos.preparacion] : []);
+  const aportes = datos.quitarPreparacion ? [] :
+    (Array.isArray(datos.preparaciones) ? datos.preparaciones :
+    (datos.preparacion ? [datos.preparacion] : []));
   const preparacionConDato = [...preparacionBase];
   for(const aporte of aportes){
     if(!preparacionConDato.some(x=>preparativosEquivalentes(x,aporte))){
@@ -2513,7 +2527,7 @@ function ordenar(){
   eventosPendientes = [];
   const normalEntrada = normalizar(texto);
   const accionGeneral = clasificarIntencion(normalEntrada);
-  const editaPreparacion = /\bpreparacion\b/.test(normalEntrada) || /\bno\s+(?:necesito|tengo\s+que)\s+llevar\b/.test(normalEntrada);
+  const editaPreparacion = /\b(?:preparacion|preparativos|documentos|estudios|combustible|llevar)\b/.test(normalEntrada) || /\bno\s+(?:necesito|tengo\s+que)\s+llevar\b/.test(normalEntrada);
   if(accionGeneral === "eliminar" && !editaPreparacion){
     prepararEliminacion(interpretar(texto));
     return;
