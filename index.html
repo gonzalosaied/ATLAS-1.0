@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.1 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.2 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.1</div>
+    <div class="version">Atlas v1.6.5.10-r6.2</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.1 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.2 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1939,6 +1939,56 @@ function extraerAvisoContextual(textoNormalizado){
   return match[2].startsWith("hora") ? cantidad*60 : cantidad;
 }
 
+// r6.2: los aportes de preparación tienen prioridad sobre las consultas.
+// El evento existente se propone para actualizar; nunca se guarda sin confirmar.
+function proponerAportePreparacion(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  if(/[¿?]/.test(texto)) return false;
+  if(/\b(?:que tengo que llevar|que debo llevar|que necesito llevar|tengo que llevar algo|que llevar|que preparo)\b/.test(n) &&
+     !/\b(?:agrega|agregame|anota|anotame|inclui|sumale|pone|poneme)\b/.test(n)) return false;
+  const esPedido=/\b(?:agrega(?:me|le|lo)?|agregar|anota(?:me|le|lo)?|anotar|inclui(?:me|le)?|sumale|pone(?:me|le)?|recordame)\b/.test(n);
+  const esAfirmacion=/\b(?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay)\s+que\s+llevar\b/.test(n) ||
+    /\b(?:no me tengo que olvidar de llevar|tambien llevo)\b/.test(n);
+  if(!esPedido && !esAfirmacion) return false;
+  if(!/\b(?:llevar|estudios|documentos|documentacion|preparacion|preparativos|orden|credencial)\b/.test(n)) return false;
+  const base=texto.replace(/\b(?:agrega(?:me|le|lo)?|anota(?:me|le|lo)?|inclui(?:me|le)?|sumale|pone(?:me|le)?|recordame)\s+(?:que\s+)?/i,"");
+  const datos=extraerContextoNuevo(base);
+  let preparacion=datos?.preparacion || "";
+  if(!preparacion){
+    const m=base.match(/\b(?:llevar|lleve)\s+(.+?)(?:[.!?;]|$)/i);
+    if(m) preparacion="llevar "+m[1].trim();
+  }
+  if(!preparacion) return false;
+  // No incorporar el nombre del evento a la lista de objetos a llevar.
+  const tipo=/\breunion\b/.test(n)?"reunion":/\b(?:turno|dentista|odontologo|medico)\b/.test(n)?"turno":/\bviaje\b/.test(n)?"viaje":"";
+  const agenda=obtenerAgenda();
+  let candidatos=[];
+  const reunion=n.match(/\breunion\s+con\s+([a-zñ]+)(?=\s|$)/);
+  if(reunion) candidatos=agenda.filter(e=>normalizar(e.titulo).includes("reunion con "+reunion[1]));
+  else if(/\bdentista\b/.test(n)) candidatos=agenda.filter(e=>/\bdentista\b/.test(normalizar(e.titulo)));
+  else if(/\bodontologo\b/.test(n)) candidatos=agenda.filter(e=>/\bodontologo\b/.test(normalizar(e.titulo)));
+  else if(/\b(?:medico|doctora?)\b/.test(n)) candidatos=agenda.filter(e=>/\b(?:medico|doctora?)\b/.test(normalizar(e.titulo)));
+  else if(tipo) candidatos=agenda.filter(e=>eventoCoincideConTipoContextual(e,tipo));
+  const ultimo=obtenerEventoContexto();
+  if(ultimo && (!candidatos.length || candidatos.some(e=>String(e.id)===String(ultimo.id))) &&
+      eventoCoincideConTipoContextual(ultimo,tipo)) candidatos=[ultimo];
+  if(candidatos.length>1){
+    const futuros=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now())
+      .sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+    if(futuros.length) candidatos=[futuros[0]];
+  }
+  if(candidatos.length!==1){
+    document.getElementById("resultado").innerHTML='<div class="c info">Entendí que querés agregar un preparativo, pero necesito identificar el turno o actividad exacta. ¿Cuál es?</div>';
+    return true;
+  }
+  const elegido=candidatos[0];
+  recordarEventoContexto(elegido.id);
+  mostrarConfirmacionEnriquecimiento(elegido,{
+    preparacion, tipo, textoOriginal:texto, ubicacion:"", transporte:"", duracion:null, quitarPreparacion:""
+  });
+  return true;
+}
+
 // r6: consultas de preparación se resuelven antes de las búsquedas generales.
 // La consulta nunca crea ni modifica eventos y no usa datos de otros eventos.
 function consultarPreparacionDeActividad(texto){
@@ -2300,6 +2350,7 @@ function ordenar(){
     return;
   }
 
+  if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
   if(consultarDuracionActividad(texto)) return;
   if(consultarReferenciaConversacional(texto)) return;
