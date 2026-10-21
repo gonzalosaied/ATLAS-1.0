@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.6 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.6.1 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r6.6</div>
+    <div class="version">Atlas v1.6.5.10-r6.6.1</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.6 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.6.1 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1281,6 +1281,16 @@ function aHora(total){
   return `${String(Math.floor(total/60)).padStart(2,"0")}:${String(total%60).padStart(2,"0")}`;
 }
 
+// Solo para mostrar horas de fin; no altera cálculos ni fechas guardadas.
+function horaFinVisible(total){
+  const minutosDia=24*60;
+  const dias=Math.floor(total/minutosDia);
+  const hora=((total%minutosDia)+minutosDia)%minutosDia;
+  const hh=String(Math.floor(hora/60)).padStart(2,"0");
+  const mm=String(hora%60).padStart(2,"0");
+  return `${hh}:${mm}${dias>0 ? ` (+${dias} día${dias===1?"":"s"})` : ""}`;
+}
+
 function buscarConflictos(evento){
   if(!evento.fecha || !evento.hora) return [];
 
@@ -1333,7 +1343,7 @@ function estadoEvento(evento,ahora=new Date()){
 }
 
 function detalleEvento(evento){
-  const fin = evento.hora ? aHora(minutos(evento.hora)+evento.duracion) : "";
+  const fin = evento.hora ? horaFinVisible(minutos(evento.hora)+evento.duracion) : "";
   const estado = estadoEvento(evento);
   const avisos = normalizarAvisos(evento);
   return `
@@ -2153,7 +2163,7 @@ function consultarDuracionActividad(texto){
   const duracion=Number(e.duracion||60);
   const horas=Math.floor(duracion/60), minutosRestantes=duracion%60;
   const partes=[horas?`${horas} ${horas===1?"hora":"horas"}`:"",minutosRestantes?`${minutosRestantes} ${minutosRestantes===1?"minuto":"minutos"}`:""].filter(Boolean);
-  const fin=aHora(minutos(e.hora)+duracion);
+  const fin=horaFinVisible(minutos(e.hora)+duracion);
   const pideFin=/\ba que hora\s+(?:termina|finaliza|acaba)\b/.test(n);
   const mensaje=pideFin
     ? `${escapar(e.titulo)} termina a las <b>${escapar(fin)}</b>.`
@@ -2175,7 +2185,7 @@ function consultarReferenciaConversacional(texto){
     return true;
   }
   const inicio=escapar(e.hora);
-  const fin=escapar(aHora(minutos(e.hora)+Number(e.duracion||60)));
+  const fin=escapar(horaFinVisible(minutos(e.hora)+Number(e.duracion||60)));
   let respuesta;
   if(/\bdonde\b/.test(n)){
     respuesta=e.ubicacion ? `${escapar(e.titulo)} es en ${escapar(e.ubicacion)}.` : `Todavía no tengo una ubicación registrada para ${escapar(e.titulo)}.`;
@@ -2719,8 +2729,8 @@ function mostrarMultiples(eventos){
   }
   const cruces = conflictosInternos(eventos);
   const externos = eventos.flatMap(evento => buscarConflictos(evento).map(existente => [evento,existente]));
-  const resumenCruces = cruces.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> (${a.hora}–${aHora(minutos(a.hora)+a.duracion)}) se superpone con <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
-  const resumenExternos = externos.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> se superpone con un evento ya guardado: <b>${escapar(b.titulo)}</b> (${b.hora}–${aHora(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const resumenCruces = cruces.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> (${a.hora}–${horaFinVisible(minutos(a.hora)+a.duracion)}) se superpone con <b>${escapar(b.titulo)}</b> (${b.hora}–${horaFinVisible(minutos(b.hora)+b.duracion)}).</div>`).join("");
+  const resumenExternos = externos.map(([a,b]) => `<div style="margin-top:10px"><b>${escapar(a.titulo)}</b> se superpone con un evento ya guardado: <b>${escapar(b.titulo)}</b> (${b.hora}–${horaFinVisible(minutos(b.hora)+b.duracion)}).</div>`).join("");
   const totalCruces = cruces.length+externos.length;
   document.getElementById("resultado").innerHTML = `<div class="c"><b>🧠 Entendí ${eventos.length} eventos</b><div style="margin-top:12px">${eventos.map(detalleEvento).join("<hr>")}</div></div>${totalCruces ? `<div class="c warn"><b>⚠️ Encontré ${totalCruces} ${totalCruces === 1 ? "superposición" : "superposiciones"}.</b>${resumenCruces}${resumenExternos}<div class="small">No guardé nada todavía.</div></div>` : `<div class="c success"><b>No encontré conflictos entre las actividades ni con tu agenda.</b></div>`}<div class="c info"><p>¿Querés guardar igualmente los ${eventos.length} eventos?</p><button class="primary" onclick="guardarMultiples()">Sí, guardar todos</button><button class="secondary" onclick="cancelar()">No, cancelar</button></div>`;
 }
@@ -3128,7 +3138,7 @@ function consultarAgenda(filtro){
   }
   if(agenda.length === 1){
     const e = agenda[0];
-    const fin = aHora(minutos(e.hora) + Number(e.duracion || 60));
+    const fin = horaFinVisible(minutos(e.hora) + Number(e.duracion || 60));
     resultado.innerHTML = `<div class="c query">${escapar(e.icono || "📅")} Tenés ${escapar(e.titulo)} el ${fechaBonita(e.fecha)} de ${e.hora} a ${fin}.</div>`;
     return;
   }
@@ -3149,7 +3159,7 @@ function consultarAgenda(filtro){
       `<button class="secondary" onclick="mostrarSemanaCompleta()">Ver semana completa</button></div>`;
     return;
   }
-  const filas = agenda.map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(aHora(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("");
+  const filas = agenda.map(e=>`<p>${escapar(e.icono || "📅")} <b>${escapar(e.titulo)}</b> — ${escapar(fechaBonita(e.fecha))}, ${escapar(e.hora)}–${escapar(horaFinVisible(minutos(e.hora)+Number(e.duracion||60)))}</p>`).join("");
   resultado.innerHTML = `<div class="c query"><b>📅 Esto figura en tu agenda (${agenda.length})</b>${intervalo ? `<p class="small">${escapar(intervalo.etiqueta)}</p>` : ""}<div style="margin-top:12px">${filas}</div><div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
 }
 
