@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.1 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.2 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -389,6 +389,14 @@ hr{
 .home-smart-prep b{display:block;margin-bottom:6px}
 .home-smart-item{padding:3px 0;color:#c3d5ef}
 
+
+/* r6.9.2: sugerencias breves y adaptativas */
+.kai-shortcuts{display:block;margin:8px 0 14px;padding:11px 12px}
+.kai-shortcuts-label{display:block;margin-bottom:9px}
+.kai-shortcuts-hint{font-size:12px;line-height:1.45;color:#b9c8df;margin-bottom:9px}
+.kai-shortcuts-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.kai-shortcuts-grid button{width:100%;min-width:0;margin:0;padding:10px 6px;font-size:11px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:350px){.kai-shortcuts-grid{grid-template-columns:1fr}}
 </style>
 </head>
 
@@ -405,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.1 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.2 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -497,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.1 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.2 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2106,14 +2114,40 @@ function proponerAportePreparacion(texto){
 
 // r6.9 — acciones rápidas contextuales: siempre generan una consulta/propuesta,
 // nunca editan la agenda sin confirmación explícita.
-function accionesRapidasEvento(evento){
+// r6.9.2: sugerencias basadas en datos existentes, nunca en supuestos.
+function accionesRapidasEvento(evento, contexto="preparativos"){
+  if(!evento) return "";
   const id=encodeURIComponent(String(evento.id));
-  return `<div class="kai-shortcuts" aria-label="Acciones para ${escapar(evento.titulo)}">
-    <span class="kai-shortcuts-label">¿QUÉ QUERÉS HACER?</span>
-    <button class="secondary" onclick="accionRapidaEvento('${id}','horario')">🕒 Cambiar horario</button>
-    <button class="secondary" onclick="accionRapidaEvento('${id}','preparacion')">📋 Preparativos</button>
-    <button class="secondary" onclick="accionRapidaEvento('${id}','recordatorio')">🔔 Recordatorio</button>
-    <button class="secondary" onclick="accionRapidaEvento('${id}','cancelar')">✕ Cancelar actividad</button>
+  const nombre=normalizar(evento.titulo||"");
+  const items=Array.isArray(evento.preparacion)?evento.preparacion.filter(Boolean):
+    (evento.preparacion?[evento.preparacion]:[]);
+  const tienePreparativos=items.length>0;
+  const esViaje=/\\b(?:viaje|viajar|salida a|ruta)\\b/.test(nombre);
+  const esTurno=/\\b(?:turno|dentista|medico|doctor|consulta)\\b/.test(nombre);
+  const esReunion=/\\b(?:reunion|entrevista|encuentro)\\b/.test(nombre);
+  // Se muestran solo acciones ya disponibles en Atlas.
+  const opciones=[];
+  if(contexto==="preparativos"){
+    opciones.push({accion:"preparacion",etiqueta:tienePreparativos?"📋 Editar preparativos":"📋 Agregar preparativos"});
+    if(tienePreparativos) opciones.push({accion:"recordatorio",etiqueta:"🔔 Recordar preparativos"});
+    else if(esTurno || esReunion) opciones.push({accion:"horario",etiqueta:"🕒 Cambiar horario"});
+    else if(esViaje) opciones.push({accion:"recordatorio",etiqueta:"🔔 Poner recordatorio"});
+  }else if(contexto==="horario"){
+    opciones.push({accion:"horario",etiqueta:"🕒 Cambiar horario"});
+    if(tienePreparativos) opciones.push({accion:"preparacion",etiqueta:"📋 Ver preparativos"});
+    else opciones.push({accion:"recordatorio",etiqueta:"🔔 Poner recordatorio"});
+  }
+  if(!opciones.length) return "";
+  const botones=opciones.slice(0,2).map(x=>
+    `<button class="secondary" onclick="accionRapidaEvento('${id}','${x.accion}')">${x.etiqueta}</button>`
+  ).join("");
+  const mensaje=tienePreparativos && contexto==="preparativos"
+    ? `<div class="kai-shortcuts-hint">Tenés ${items.length} preparativo${items.length===1?"":"s"} registrado${items.length===1?"":"s"}. Si querés, puedo ayudarte a organizar un recordatorio.</div>`
+    : "";
+  return `<div class="kai-shortcuts" aria-label="Sugerencias para ${escapar(evento.titulo)}">
+    <span class="kai-shortcuts-label">SI TE SIRVE, PODEMOS…</span>
+    ${mensaje}
+    <div class="kai-shortcuts-grid">${botones}</div>
   </div>`;
 }
 let accionRapidaPendiente = null;
