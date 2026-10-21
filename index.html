@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r5 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -351,7 +351,7 @@ hr{
   <div class="hero">
     <h2>Buen día, Gonzalo 👋</h2>
     <div class="small">Vos hablá. Atlas se encarga de ordenar.</div>
-    <div class="version">Atlas v1.6.5.10-r5</div>
+    <div class="version">Atlas v1.6.5.10-r6</div>
   </div>
 
   <div class="c">
@@ -447,7 +447,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r5 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -1939,6 +1939,69 @@ function extraerAvisoContextual(textoNormalizado){
   return match[2].startsWith("hora") ? cantidad*60 : cantidad;
 }
 
+// r6: consultas de preparación se resuelven antes de las búsquedas generales.
+// La consulta nunca crea ni modifica eventos y no usa datos de otros eventos.
+function consultarPreparacionDeActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
+  const preguntaPreparacion= /\b(?:que (?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay) que (?:llevar|preparar)|que (?:llevo|llevar|preparo|preparar)|tengo que llevar algo|hay que llevar algo|debo llevar algo|necesito llevar algo|que (?:cosas|documentos|papeles) (?:tengo que )?llevar|que (?:preparacion|preparativos) (?:tengo|hay|necesito)|como (?:me )?preparo|que tengo que tener listo|me tengo que llevar algo)\b/.test(n);
+  if(!preguntaPreparacion) return false;
+  const resultado=document.getElementById('resultado');
+  const todos=obtenerAgenda();
+  // Primero identificar un evento nombrado, aunque la conversación previa sea sobre otro.
+  let candidatos=[];
+  const reunion=n.match(/\breunion\s+con\s+([a-z\u00f1]+(?:\s+[a-z\u00f1]+)?)/);
+  if(reunion){
+    const persona=reunion[1].replace(/\b(?:manana|hoy|pasado|el|la|del)\b.*$/,'').trim();
+    candidatos=todos.filter(e=>normalizar(e.titulo).includes('reunion con '+persona));
+  }else if(/\b(?:dentista|odontologo)\b/.test(n)){
+    candidatos=todos.filter(e=>/dentista|odontologo/.test(normalizar(e.titulo)));
+  }else if(/\b(?:medico|doctora?|turno medico)\b/.test(n)){
+    candidatos=todos.filter(e=>/medico|doctora?|hospital|clinica/.test(normalizar(e.titulo)));
+  }else if(/\b(?:viaje\s+a|viajar\s+a)\s+([a-z\u00f1]+)/.test(n)){
+    const destino=n.match(/\b(?:viaje\s+a|viajar\s+a)\s+([a-z\u00f1]+)/)[1];
+    candidatos=todos.filter(e=>normalizar(e.titulo).includes(destino) && /viaje|viajar/.test(normalizar(e.titulo)));
+  }else if(/\b(?:esa|esta|aquella)\s+(?:reunion|cita|actividad|turno|evento|viaje)\b/.test(n)){
+    const tipo=/\breunion\b/.test(n)?'reunion':/\bviaje\b/.test(n)?'viaje':/\bturno\b/.test(n)?'turno':'';
+    const ultimo=obtenerEventoContexto();
+    if(ultimo && eventoCoincideConTipoContextual(ultimo,tipo)) candidatos=[ultimo];
+    else if(tipo) candidatos=todos.filter(e=>eventoCoincideConTipoContextual(e,tipo));
+  }else{
+    const ultimo=obtenerEventoContexto();
+    if(ultimo) candidatos=[ultimo];
+  }
+  const fechaMencionada=/\b(?:hoy|manana|pasado manana)\b/.exec(n);
+  if(fechaMencionada){
+    const hoy=new Date();
+    hoy.setDate(hoy.getDate()+(fechaMencionada[0]==='manana'?1:fechaMencionada[0]==='pasado manana'?2:0));
+    const fecha=fechaLocalISO(hoy);
+    candidatos=candidatos.filter(e=>e.fecha===fecha);
+  }
+  if(!candidatos.length){
+    resultado.innerHTML='<div class="c query">No encontré una actividad concreta para revisar sus preparativos. ¿De qué evento hablás?</div>';
+    return true;
+  }
+  if(candidatos.length>1){
+    const ahora=Date.now();
+    const futuras=candidatos.filter(e=>momentoEvento(e,true).getTime()>=ahora)
+      .sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+    if(futuras.length) candidatos=[futuras[0]];
+    else{
+      resultado.innerHTML='<div class="c query">Encontré varias actividades anteriores. ¿De qué fecha querés consultar la preparación?</div>';
+      return true;
+    }
+  }
+  const e=candidatos[0];
+  recordarEventoContexto(e.id);
+  const items=Array.isArray(e.preparacion)?e.preparacion.filter(Boolean):(e.preparacion?[e.preparacion]:[]);
+  const listado=items.length?`<p>${items.map(x=>'✓ '+escapar(String(x))).join('<br>')}</p>`:'<p>No hay preparativos registrados para esta actividad.</p>';
+  const traslado=e.transporte?`<p><b>Traslado registrado:</b> ${escapar(String(e.transporte))}.</p>`:'';
+  const ubicacion=e.ubicacion?`<p><b>Lugar:</b> ${escapar(String(e.ubicacion))}.</p>`:'';
+  const sinDocumentos= /\b(?:llevar|documentos|papeles)\b/.test(n) && !items.some(x=>/document|estudio|orden|papel|dni|credencial/i.test(String(x)))
+    ? '<p>No tengo documentación específica anotada para llevar.</p>':'';
+  resultado.innerHTML=`<div class="c query"><b>Para ${escapar(e.titulo)} (${escapar(fechaBonita(e.fecha))}):</b>${listado}${traslado}${ubicacion}${sinDocumentos}</div>`;
+  return true;
+}
+
 function consultarReferenciaConversacional(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "").trim();
   // Solo preguntas elípticas: una actividad mencionada explícitamente debe buscarse
@@ -1974,7 +2037,7 @@ function consultarReferenciaConversacional(texto){
   }else{
     respuesta=`${escapar(e.titulo)} es el ${escapar(fechaBonita(e.fecha))}, de <b>${inicio} a ${fin}</b>.`;
   }
-  resultado.innerHTML=`<div class="c query">${respuesta}<div class="small">No modifiqué nada.</div></div>`;
+  resultado.innerHTML=`<div class="c query">${respuesta}</div>`;
   return true;
 }
 
@@ -2179,6 +2242,7 @@ function ordenar(){
     return;
   }
 
+  if(consultarPreparacionDeActividad(texto)) return;
   if(consultarReferenciaConversacional(texto)) return;
   // Preguntas sobre un conflicto pendiente conservan el borrador y reciben opciones.
   if(responderAlternativasConflicto(texto)) return;
@@ -2893,7 +2957,7 @@ function consultarAgenda(filtro){
 
   agenda.sort((a,b) => `${a.fecha}T${a.hora}`.localeCompare(`${b.fecha}T${b.hora}`));
   if(agenda.length === 1) recordarEventoContexto(agenda[0].id);
-  const pidePreparacion = /\b(?:que\s+(?:tengo|debo|necesito)\s+que\s+llevar|que\s+llevar|preparacion)\b/.test(normalizar(filtro.textoOriginal || ""));
+  const pidePreparacion = /\b(?:que\s+(?:tengo|debo|necesito)\s+que\s+(?:llevar|preparar)|que\s+(?:llevar|preparar)|preparacion)\b/.test(normalizar(filtro.textoOriginal || ""));
   if(pidePreparacion && agenda.length === 1){
     const e = agenda[0];
     const items = Array.isArray(e.preparacion) ? e.preparacion : (e.preparacion ? [e.preparacion] : []);
