@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.1 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -405,7 +405,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.1 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -497,7 +497,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.1 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2116,11 +2116,14 @@ function accionesRapidasEvento(evento){
     <button class="secondary" onclick="accionRapidaEvento('${id}','cancelar')">✕ Cancelar actividad</button>
   </div>`;
 }
+let accionRapidaPendiente = null;
 function accionRapidaEvento(idCodificado,accion){
+  accionRapidaPendiente = null;
   const id=decodeURIComponent(idCodificado);
   const evento=obtenerAgenda().find(e=>String(e.id)===id);
   if(!evento){document.getElementById('resultado').innerHTML='<div class="c warn">Esa actividad ya no está en tu agenda. No hice cambios.</div>';return;}
   recordarEventoContexto(evento.id);
+  if(accion==="horario" || accion==="preparacion" || accion==="recordatorio") accionRapidaPendiente={id:evento.id,accion};
   const salida=document.getElementById('resultado');
   if(accion==='horario'){
     salida.innerHTML=`<div class="c info"><b>Cambiar horario · ${escapar(evento.titulo)}</b><p>¿Para qué día y hora querés moverlo?</p><div class="small">Todavía no modifiqué nada. Escribime el nuevo horario.</div></div>`;
@@ -2209,10 +2212,13 @@ function consultarDuracionActividad(texto){
   const resultado=document.getElementById("resultado");
   const todos=obtenerAgenda();
   let candidatos=[];
-  const nombrada=n.match(/\breunion\s+con\s+([a-zñ]+(?:\s+[a-zñ]+)?)/);
+  const nombrada=n.match(/\breunion\s+con\s+([a-zñ]+)(?:\s+(?!de\b|del\b|el\b|la\b|hoy\b|manana\b)([a-zñ]+))?/);
   if(nombrada){
-    const persona=nombrada[1].replace(/\b(?:manana|hoy|pasado|el|la|del)\b.*$/,"").trim();
+    const persona=[nombrada[1],nombrada[2]].filter(Boolean).join(" ");
     candidatos=todos.filter(e=>normalizar(e.titulo).includes("reunion con "+persona));
+  }else if(/\b(?:la|una|mi|esa|esta|proxima)\s+reunion\b/.test(n)){
+    const ultimo=obtenerEventoContexto();
+    candidatos=ultimo && eventoCoincideConTipoContextual(ultimo,"reunion") ? [ultimo] : todos.filter(e=>eventoCoincideConTipoContextual(e,"reunion"));
   }else if(/\b(?:dentista|odontologo)\b/.test(n)){
     candidatos=todos.filter(e=>/\b(?:dentista|odontologo)\b/.test(normalizar(e.titulo)));
   }else if(/\b(?:medico|doctora?|turno medico)\b/.test(n)){
@@ -2486,6 +2492,15 @@ function ordenar(){
   entrada.value = "";
   desplazarConversacion();
 
+  // r6.9.1: cancelar una acción rápida no confirmada, sin pedir un nuevo horario.
+  const nCancelacion=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  if(accionRapidaPendiente && /^(?:(?:no[, ]*)?mejor\s+)?(?:dejalo|dejala|dejarlo|dejarla)\s+como\s+(?:esta|estaba)|^(?:mejor\s+no|olvidate|no\s+hace\s+falta|no\s+cambies\s+nada|cancela(?:\s+el\s+cambio)?)$/.test(nCancelacion)){
+    const evento=obtenerAgenda().find(e=>String(e.id)===String(accionRapidaPendiente.id));
+    accionRapidaPendiente=null;
+    resultado.innerHTML=`<div class="c query">Dale, dejamos ${evento?escapar(evento.titulo):"la actividad"} como estaba. No modifiqué nada.</div>`;
+    return;
+  }
+  accionRapidaPendiente=null;
   // Resolver conversación general sin convertirla en un evento.
   const conversacionNormal = normalizar(texto).replace(/[.!?]+$/g,"").trim();
   if(/(?:de que|que) (?:estabamos|veniamos) hablando|que hablamos recien|te acordas de que hablabamos/.test(conversacionNormal)){
