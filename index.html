@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.2 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.3 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.2 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.3 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.2 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.3 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2157,7 +2157,7 @@ function accionRapidaEvento(idCodificado,accion){
   const evento=obtenerAgenda().find(e=>String(e.id)===id);
   if(!evento){document.getElementById('resultado').innerHTML='<div class="c warn">Esa actividad ya no está en tu agenda. No hice cambios.</div>';return;}
   recordarEventoContexto(evento.id);
-  if(accion==="horario" || accion==="preparacion" || accion==="recordatorio") accionRapidaPendiente={id:evento.id,accion};
+  if(accion==="horario" || accion==="preparacion" || accion==="recordatorio") accionRapidaPendiente={id:evento.id,accion,fase:"esperar"};
   const salida=document.getElementById('resultado');
   if(accion==='horario'){
     salida.innerHTML=`<div class="c info"><b>Cambiar horario · ${escapar(evento.titulo)}</b><p>¿Para qué día y hora querés moverlo?</p><div class="small">Todavía no modifiqué nada. Escribime el nuevo horario.</div></div>`;
@@ -2170,6 +2170,78 @@ function accionRapidaEvento(idCodificado,accion){
   }
   document.getElementById('entrada').focus();
 }
+
+// r6.9.3: las acciones rápidas conservan su intención hasta resolverla.
+function minutosRecordatorioNatural(texto){
+  const n=normalizar(texto).trim();
+  const numeros={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,doce:12};
+  const match=n.match(/\b(\d+|un|una|uno|dos|tres|cuatro|cinco|seis|doce)\s*(horas?|hs?|minutos?|mins?)\b/);
+  if(!match) return null;
+  const cantidad=/^\d+$/.test(match[1])?Number(match[1]):numeros[match[1]];
+  const valor=cantidad*(/^h/.test(match[2])?60:1);
+  return valor>0 && valor<=10080?valor:null;
+}
+function confirmarRecordatorioRapido(){
+  const pendiente=accionRapidaPendiente;
+  if(!pendiente || pendiente.accion!=="recordatorio" || pendiente.fase!=="confirmar") return;
+  const evento=obtenerAgenda().find(e=>String(e.id)===String(pendiente.id));
+  if(!evento){
+    accionRapidaPendiente=null;
+    document.getElementById("resultado").innerHTML='<div class="c warn">La actividad ya no está en la agenda. No hice cambios.</div>';
+    return;
+  }
+  const anteriores=normalizarAvisos(evento);
+  const avisos=[...new Set([...anteriores,pendiente.minutos])].sort((a,b)=>b-a);
+  const actualizado={...evento,avisosMinutos:avisos,avisoMinutos:avisos[0]};
+  guardarAgenda(obtenerAgenda().map(e=>String(e.id)===String(evento.id)?actualizado:e));
+  recordarEventoContexto(evento.id);
+  accionRapidaPendiente=null;
+  document.getElementById("resultado").innerHTML=`<div class="c success"><b>✓ Recordatorio guardado</b><p>${escapar(evento.titulo)}: ${escapar(etiquetaAviso(pendiente.minutos))}.</p><div class="small">Conservé los avisos que ya tenía la actividad. El aviso funciona según las notificaciones disponibles en Atlas.</div></div>`;
+  renderAgenda(); actualizarProximo();
+}
+function cancelarRecordatorioRapido(){
+  accionRapidaPendiente=null;
+  document.getElementById("resultado").innerHTML='<div class="c info">Perfecto, no cambié ningún recordatorio.</div>';
+}
+function continuarAccionRapida(texto){
+  const pendiente=accionRapidaPendiente;
+  if(!pendiente || pendiente.accion!=="recordatorio") return false;
+  const n=normalizar(texto).trim();
+  if(/^(?:mejor no|no|no gracias|cancelar?|olvidate|dejalo como esta|dejalo como estaba|no hagas nada)$/.test(n)){
+    cancelarRecordatorioRapido();return true;
+  }
+  if(pendiente.fase==="confirmar"){
+    if(/^(?:si|si guardar|guardar|confirmar|confirmo|dale|perfecto|hacelo|agregalo)$/.test(n)){
+      confirmarRecordatorioRapido();return true;
+    }
+    // Una consulta nueva deja atrás una confirmación no aceptada.
+    if(/[¿?]/.test(texto) || /^(?:que|cuando|donde|cuanto|como)\b/.test(n)){
+      accionRapidaPendiente=null;return false;
+    }
+    document.getElementById("resultado").innerHTML='<div class="c info">¿Confirmás el recordatorio propuesto?<p><button class="primary" onclick="confirmarRecordatorioRapido()">Sí, guardar</button><button class="secondary" onclick="cancelarRecordatorioRapido()">No, gracias</button></p></div>';
+    return true;
+  }
+  const minutos=minutosRecordatorioNatural(texto);
+  if(minutos===null){
+    if(/[¿?]/.test(texto) || /^(?:que|cuando|donde|cuanto|como)\b/.test(n)){
+      accionRapidaPendiente=null;return false;
+    }
+    document.getElementById("resultado").innerHTML='<div class="c info">¿Cuánto tiempo antes? Por ejemplo: «una hora antes» o «30 minutos antes». No modifiqué nada.</div>';
+    return true;
+  }
+  const evento=obtenerAgenda().find(e=>String(e.id)===String(pendiente.id));
+  if(!evento){
+    accionRapidaPendiente=null;
+    document.getElementById("resultado").innerHTML='<div class="c warn">No encontré esa actividad. No hice cambios.</div>';
+    return true;
+  }
+  accionRapidaPendiente={...pendiente,fase:"confirmar",minutos};
+  const nombrePreparativos=Array.isArray(evento.preparacion)?evento.preparacion.filter(Boolean):[];
+  const descripcion=nombrePreparativos.length?`<p>Preparativos anotados: ${nombrePreparativos.map(escapar).join(", ")}.</p>`:"";
+  document.getElementById("resultado").innerHTML=`<div class="c info"><b>Propuesta de recordatorio</b><p>${escapar(evento.titulo)} · ${escapar(fechaBonita(evento.fecha))} a las ${escapar(evento.hora)}.</p><p>Agregar un aviso ${escapar(etiquetaAviso(minutos).toLowerCase())}.</p>${descripcion}<div class="small">Este aviso corresponde a la actividad, no a una tarea independiente. Todavía no guardé nada.</div><button class="primary" onclick="confirmarRecordatorioRapido()">Sí, guardar</button><button class="secondary" onclick="cancelarRecordatorioRapido()">No, gracias</button></div>`;
+  return true;
+}
+
 function consultarPreparacionDeActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
   const preguntaPreparacion= /\b(?:que (?:tengo|tenemos|debo|debemos|necesito|necesitamos|hay) que (?:llevar|preparar)|que (?:llevo|llevar|preparo|preparar)|tengo que llevar algo|hay que llevar algo|debo llevar algo|necesito llevar algo|que (?:cosas|documentos|papeles) (?:tengo que )?llevar|que (?:preparacion|preparativos) (?:tengo|hay|necesito)|como (?:me )?preparo|que tengo que tener listo|me tengo que llevar algo)\b/.test(n);
@@ -2534,6 +2606,7 @@ function ordenar(){
     resultado.innerHTML=`<div class="c query">Dale, dejamos ${evento?escapar(evento.titulo):"la actividad"} como estaba. No modifiqué nada.</div>`;
     return;
   }
+  if(continuarAccionRapida(texto)) return;
   accionRapidaPendiente=null;
   // Resolver conversación general sin convertirla en un evento.
   const conversacionNormal = normalizar(texto).replace(/[.!?]+$/g,"").trim();
@@ -3836,6 +3909,7 @@ async function guardarConPermiso(){
 }
 
 function cancelar(){
+  accionRapidaPendiente=null;
   cambioDobleModificacion = null;
   eventoPendiente = null;
   eventosPendientes = [];
