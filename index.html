@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.11 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.12 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.11 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.12 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.11 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.12 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2680,6 +2680,55 @@ function consultarDuracionActividad(texto){
   return true;
 }
 
+// r6.9.12: movilidad contextual. Consultar no significa cambiar el traslado.
+function consultarMovilidadActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const consulta=/^(?:(?:y|entonces|pero)\s+)?(?:como\s+(?:voy|iba|vamos|llego|llegamos|me traslado|nos trasladamos)|en\s+que\s+(?:voy|iba|vamos|transporte\s+(?:voy|iba|vamos))|(?:voy|iba|vamos)\s+en\s+(?:auto|colectivo|micro|taxi|uber|bicicleta|moto)|(?:que|cual)\s+(?:transporte|medio de transporte)\s+(?:tengo|uso|voy a usar|tenia))\b/.test(n);
+  if(!consulta)return false;
+  const salida=document.getElementById("resultado");
+  const nombre=n.match(/\breunion\s+con\s+([a-zñ]+)/);
+  const conPersona=n.match(/\bcon\s+([a-zñ]+)\b/);
+  const persona=nombre?nombre[1]:(conPersona?conPersona[1]:null);
+  const tipo=/\breunion\b/.test(n)?"reunion":/\b(?:dentista|turno)\b/.test(n)?"turno":null;
+  let candidatos=[];
+  if(persona||tipo){
+    candidatos=obtenerAgenda().filter(e=>{
+      const titulo=normalizar(e.titulo||"");
+      if(persona && !new RegExp("\\b"+persona+"\\b").test(titulo+" "+normalizar(e.persona||"")))return false;
+      if(tipo==="reunion" && !/\breunion\b/.test(titulo))return false;
+      if(tipo==="turno" && !/\b(?:turno|dentista)\b/.test(titulo))return false;
+      return true;
+    });
+    if(candidatos.length>1){
+      const futuras=candidatos.filter(e=>momentoEvento(e,true)>=new Date()).sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+      if(futuras.length)candidatos=[futuras[0]];
+    }
+  }else{
+    const contexto=obtenerEventoContexto();
+    if(contexto)candidatos=[contexto];
+  }
+  if(candidatos.length!==1){
+    salida.innerHTML=`<div class="c query">${candidatos.length?'Encontré varias actividades posibles. ¿De qué fecha hablás?':'¿Para qué actividad querés consultar el traslado?'} No hice cambios.</div>`;
+    return true;
+  }
+  const e=candidatos[0];
+  recordarEventoContexto(e.id);
+  const medio=String(e.transporte||'').trim();
+  const pideRuta=/\b(?:llego|llegamos)\b/.test(n);
+  let respuesta;
+  if(pideRuta){
+    respuesta=e.ubicacion
+      ? `Para llegar a ${escapar(e.ubicacion)}${medio?` tenés registrado el traslado en ${escapar(medio)}`:''}. Todavía no tengo un recorrido verificado para indicarte cómo llegar.`
+      : `Todavía no tengo el destino registrado para ${escapar(e.titulo)}, así que no puedo indicarte un recorrido.`;
+  }else{
+    respuesta=medio
+      ? `Para ${escapar(e.titulo)} tenés registrado que vas en <b>${escapar(medio)}</b>${e.ubicacion?`. Es en ${escapar(e.ubicacion)}`:''}.`
+      : `Todavía no registraste cómo vas a ${escapar(e.titulo)}.`;
+  }
+  salida.innerHTML=`<div class="c query">${respuesta}<div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  return true;
+}
+
 // r6.9.11: consultas explícitas de ubicación, sin crear eventos.
 function consultarUbicacionActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
@@ -2996,6 +3045,7 @@ function ordenar(){
   if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
+  if(consultarMovilidadActividad(texto)) return;
   if(consultarUbicacionActividad(texto)) return;
   if(consultarDuracionActividad(texto)) return;
   if(consultarReferenciaConversacional(texto)) return;
