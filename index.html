@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.6 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.7 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.6 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.7 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.6 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.7 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2091,6 +2091,18 @@ function proponerAportePreparacion(texto){
   const ultimo=obtenerEventoContexto();
   if(ultimo && (!candidatos.length || candidatos.some(e=>String(e.id)===String(ultimo.id))) &&
       eventoCoincideConTipoContextual(ultimo,tipo)) candidatos=[ultimo];
+  if(candidatos.length>1 && horaBuscada && !/\b(?:hoy|manana)\b/.test(n)){
+    const fechas=[...new Set(candidatos.map(e=>e.fecha))];
+    if(fechas.length>1){
+      const contexto=obtenerEventoContexto();
+      if(contexto && candidatos.some(e=>String(e.id)===String(contexto.id))){
+        candidatos=[candidatos.find(e=>String(e.id)===String(contexto.id))];
+      }else{
+        resultado.innerHTML='<div class="c query">Encontré más de una reunión a esa hora. ¿De qué fecha querés consultar los recordatorios?</div>';
+        return true;
+      }
+    }
+  }
   if(candidatos.length>1){
     const futuros=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now())
       .sort((a,b)=>momentoEvento(a)-momentoEvento(b));
@@ -2313,10 +2325,14 @@ function consultarAvisosActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
   const consulta=/\b(?:que|cuales|cuantos)\s+(?:avisos|recordatorios)\s+(?:tengo|hay|estan|tenemos)\b/.test(n)
     || /\b(?:cuando|a que hora|con cuanto tiempo)\s+(?:me\s+)?(?:vas a\s+)?(?:recordar|avisar|recordas|avisas)\b/.test(n)
-    || /\b(?:que|cuales)\s+(?:avisos|recordatorios)\s+(?:hay|tiene)\b/.test(n);
+    || /\b(?:que|cuales)\s+(?:avisos|recordatorios)\s+(?:hay|tiene)\b/.test(n)
+    || /\b(?:avisos|recordatorios)\s+(?:para|de|del|sobre)\b/.test(n) && /\b(?:decis|decime|decir|mostra|mostrar|consulta|consultar|ver|saber|dame|podes|puedes|quiero)\b/.test(n);
   if(!consulta) return false;
   const todos=obtenerAgenda();
+  const resultado=document.getElementById("resultado");
   const reunion=n.match(/\breunion\s+con\s+([a-zñ]+)(?:\s+(?!de\b|del\b|el\b|la\b|hoy\b|manana\b)([a-zñ]+))?/);
+  const horaExplicita=n.match(/\b(?:a\s+las|de\s+las|las)\s+([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  const horaBuscada=horaExplicita?String(horaExplicita[1]).padStart(2,"0")+":"+horaExplicita[2]:null;
   let candidatos=[];
   if(reunion){
     const persona=[reunion[1],reunion[2]].filter(Boolean).join(" ");
@@ -2325,17 +2341,21 @@ function consultarAvisosActividad(texto){
     candidatos=todos.filter(e=>/dentista|odontologo/.test(normalizar(e.titulo)));
   }else if(/\b(?:futbol|gimnasio|viaje)\b/.test(n)){
     candidatos=todos.filter(e=>/\b(?:futbol|gimnasio|viaje)\b/.test(normalizar(e.titulo)) && n.includes(normalizar(e.titulo).split(" ")[0]));
+  }else if(/\breunion\b/.test(n)){
+    candidatos=todos.filter(e=>/\breunion\b/.test(normalizar(e.titulo)));
   }else{
     const contexto=obtenerEventoContexto();
     if(contexto) candidatos=[contexto];
   }
+  // Los datos explícitos del usuario prevalecen sobre el último evento del chat.
+  if(horaBuscada) candidatos=candidatos.filter(e=>e.hora===horaBuscada);
   if(/\bmanana\b/.test(n)){
     const d=new Date();d.setDate(d.getDate()+1);
     candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(d));
   }else if(/\bhoy\b/.test(n)){
     candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(new Date()));
   }
-  const resultado=document.getElementById("resultado");
+  
   if(!candidatos.length){
     resultado.innerHTML='<div class="c query">No encontré la actividad para consultar sus avisos. ¿Cuál querés revisar?</div>';
     return true;
