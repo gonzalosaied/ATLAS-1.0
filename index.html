@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.14.2 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.14.3 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -425,7 +425,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.14.2 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.14.3 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -525,7 +525,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.14.2 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.14.3 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -3063,7 +3063,7 @@ let lugarPendiente=null;
 function lugaresGuardados(){try{return JSON.parse(localStorage.getItem(ATLAS_LUGARES_KEY)||'{}')}catch(_){return {}}}
 function guardarLugares(obj){localStorage.setItem(ATLAS_LUGARES_KEY,JSON.stringify(obj));renderLugares()}
 function nombreLugar(tipo){return tipo==='casa'?'casa':'trabajo'}
-// r6.9.14.2: extraer únicamente el dato de dirección de respuestas conversacionales.
+// r6.9.14.3: extraer únicamente el dato de dirección de respuestas conversacionales.
 // No modificar nombres de calles: quitar solamente introducciones explícitas al dato.
 function limpiarDireccionLugar(texto){
  let d=String(texto||'').trim().replace(/[.!\s]+$/g,'').trim();
@@ -3121,7 +3121,7 @@ function gestionarLugares(texto){
  if(m){lugarPendiente={tipo:m[1],etapa:'direccion'};out.innerHTML=`<div class="c query">¿Cuál es la dirección de ${nombreLugar(m[1])}? Te pediré permiso antes de guardarla.</div>`;return true}
  m=n.match(/^(?:olvida|olvidate de|borra|elimina|eliminar|borrar)\s+(?:(?:la|mi)\s+)?(?:direccion\s+(?:de|del)\s+)?(?:mi\s+)?(casa|trabajo)\b/);
  if(m){const l=lugaresGuardados();if(!l[m[1]]){out.innerHTML=`<div class="c query">No tengo una dirección de ${nombreLugar(m[1])} guardada.</div>`;return true}lugarPendiente={tipo:m[1],etapa:'eliminar'};out.innerHTML=`<div class="c query">¿Me autorizás a borrar la dirección de ${nombreLugar(m[1])}? Respondé «sí» o «no».</div>`;return true}
- m=n.match(/^(?:(?:cual|que)\s+es\s+)?(?:la\s+)?direccion\s+(?:de\s+)?(?:mi\s+)?(casa|trabajo)\??$/);
+ m=n.match(/^(?:(?:y|entonces|tambien)\s+)?(?:(?:(?:cual|que)\s+es\s+)(?:la\s+)?(?:direccion\s+)?|(?:la\s+)?direccion\s+)(?:de\s+)?(?:mi\s+)?(casa|trabajo)$/);
  if(m){const l=lugaresGuardados();out.innerHTML=`<div class="c query">${l[m[1]]?`Tu dirección guardada de ${nombreLugar(m[1])} es <b>${escapar(l[m[1]])}</b>.`:`No tengo guardada tu dirección de ${nombreLugar(m[1])}. ¿Querés configurarla?`}</div>`;return true}
  return false;
 }
