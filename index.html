@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.7 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.8 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.7 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.8 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.7 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.8 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2259,6 +2259,7 @@ function continuarAccionRapida(texto){
 // r6.9.6: edición de avisos con referencia conversacional y confirmación.
 let ultimoAvisoConsultado = null;
 let cambioAvisoPendiente = null;
+let eleccionAvisoPendiente = null;
 function cancelarCambioAviso(){
   cambioAvisoPendiente=null;
   document.getElementById("resultado").innerHTML='<div class="c info">Perfecto, conservé el recordatorio anterior. No hice cambios.</div>';
@@ -2285,6 +2286,57 @@ function confirmarCambioAviso(){
 function horaAvisoEvento(e,minutos){
   const instante=new Date(momentoEvento(e,false).getTime()-minutos*60000);
   return String(instante.getHours()).padStart(2,"0")+":"+String(instante.getMinutes()).padStart(2,"0");
+}
+// r6.9.8: una propuesta implícita conserva el aviso consultado y pregunta
+// si hay que reemplazarlo o sumar uno nuevo, sin modificar nada todavía.
+function resolverEleccionAviso(modo){
+  const p=eleccionAvisoPendiente;
+  if(!p)return;
+  eleccionAvisoPendiente=null;
+  const e=obtenerAgenda().find(x=>String(x.id)===String(p.id));
+  const salida=document.getElementById("resultado");
+  if(!e || !normalizarAvisos(e).includes(p.anterior)){
+    salida.innerHTML='<div class="c warn">El aviso original ya no está disponible. Volvé a consultar los recordatorios. No modifiqué nada.</div>';return;
+  }
+  if(modo==='cancelar'){
+    salida.innerHTML='<div class="c info">Perfecto, no modifiqué ningún aviso.</div>';return;
+  }
+  if(modo==='reemplazar'){
+    cambioAvisoPendiente={id:e.id,anterior:p.anterior,nuevo:p.nuevo};
+    salida.innerHTML=`<div class="c info"><b>Confirmar reemplazo</b><p>${escapar(e.titulo)}</p><p>Actual: ${escapar(etiquetaAviso(p.anterior))} (${horaAvisoEvento(e,p.anterior)})</p><p>Nuevo: ${escapar(etiquetaAviso(p.nuevo))} (${horaAvisoEvento(e,p.nuevo)})</p><div class="small">Todavía no guardé nada.</div><button class="primary" onclick="confirmarCambioAviso()">Sí, reemplazar</button><button class="secondary" onclick="cancelarCambioAviso()">No, conservar</button></div>`;
+    return;
+  }
+  if(modo==='agregar'){
+    accionRapidaPendiente={id:e.id,accion:'recordatorio',fase:'confirmar',minutos:p.nuevo};
+    salida.innerHTML=`<div class="c info"><b>Confirmar aviso adicional</b><p>${escapar(e.titulo)}</p><p>Conservar ${escapar(etiquetaAviso(p.anterior).toLowerCase())} (${horaAvisoEvento(e,p.anterior)}) y agregar ${escapar(etiquetaAviso(p.nuevo).toLowerCase())} (${horaAvisoEvento(e,p.nuevo)}).</p><div class="small">Todavía no guardé nada.</div><button class="primary" onclick="confirmarRecordatorioRapido()">Sí, agregar</button><button class="secondary" onclick="cancelarRecordatorioRapido()">No, gracias</button></div>`;
+  }
+}
+function interpretarPropuestaImplicitaAviso(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
+  const salida=document.getElementById('resultado');
+  if(eleccionAvisoPendiente){
+    if(/^(?:reemplazar|reemplazalo|cambiar|cambialo|el anterior|sustituir)$/.test(n)){resolverEleccionAviso('reemplazar');return true;}
+    if(/^(?:agregar|agregalo|sumar|sumalo|otro|uno mas|los dos|ambos)$/.test(n)){resolverEleccionAviso('agregar');return true;}
+    if(/^(?:no|cancelar|dejalo como esta|mejor no|olvidate)$/.test(n)){resolverEleccionAviso('cancelar');return true;}
+    eleccionAvisoPendiente=null;
+  }
+  const tieneTiempo=/\b(?:antes|minutos?|horas?)\b/.test(n);
+  const refiereAviso=/\b(?:avises|avisame|avisar|recordes|recordame|recordar|recordatorio|aviso)\b/.test(n);
+  const hipotetico=/\b(?:y si|si quiero|quisiera|podrias|podes|quiero que|me gustaria)\b/.test(n);
+  if(!(tieneTiempo && refiereAviso && hipotetico))return false;
+  const nuevo=minutosRecordatorioNatural(texto);
+  if(nuevo===null)return false;
+  const ref=ultimoAvisoConsultado;
+  const e=ref?obtenerAgenda().find(x=>String(x.id)===String(ref.id)):null;
+  if(!e || !normalizarAvisos(e).includes(ref.minutos)){
+    salida.innerHTML='<div class="c query">¿A qué actividad te referís? Consultá primero sus recordatorios para que no cambie el aviso equivocado. No modifiqué nada.</div>';return true;
+  }
+  if(nuevo===ref.minutos){
+    salida.innerHTML='<div class="c query">Ya tenés un aviso configurado para ese momento. No hice cambios.</div>';return true;
+  }
+  eleccionAvisoPendiente={id:e.id,anterior:ref.minutos,nuevo};
+  salida.innerHTML=`<div class="c info"><b>¿Querés cambiar o agregar un recordatorio?</b><p>${escapar(e.titulo)} · ${escapar(fechaBonita(e.fecha))} a las ${escapar(e.hora)}</p><p>Actual: ${escapar(etiquetaAviso(ref.minutos))} (${horaAvisoEvento(e,ref.minutos)})</p><p>Propuesto: ${escapar(etiquetaAviso(nuevo))} (${horaAvisoEvento(e,nuevo)})</p><div class="small">No modifiqué nada todavía.</div><button class="primary" onclick="resolverEleccionAviso('reemplazar')">Reemplazar el anterior</button><button class="secondary" onclick="resolverEleccionAviso('agregar')">Agregar otro aviso</button><button class="secondary" onclick="resolverEleccionAviso('cancelar')">No, conservar</button></div>`;
+  return true;
 }
 function procesarCambioAviso(texto){
   const n=normalizar(texto).trim();
@@ -2777,6 +2829,7 @@ function ordenar(){
     prepararEliminacion(interpretar(texto));
     return;
   }
+  if(interpretarPropuestaImplicitaAviso(texto)) return;
   if(procesarCambioAviso(texto)) return;
   if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
