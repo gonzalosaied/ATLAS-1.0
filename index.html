@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.12 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.13 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.12 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.13 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.12 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.13 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2680,6 +2680,48 @@ function consultarDuracionActividad(texto){
   return true;
 }
 
+// r6.9.13: planificación de salida. No se inventan tiempos ni tráfico.
+let salidaPendienteContextual=null;
+function consultarSalidaContextual(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const salida=document.getElementById("resultado");
+  const pregunta=/^(?:(?:y|entonces|pero)\s+)?(?:(?:a\s+que\s+hora|cuando)\s+(?:(?:tendria|deberia|me conviene|tengo)\s+que\s+)?(?:salir|irme|partir|arrancar)|(?:cuanto\s+antes|con\s+cuanta\s+anticipacion)\s+(?:tengo\s+que\s+)?salir)\b/.test(n);
+  if(!pregunta){
+    if(!salidaPendienteContextual)return false;
+    if(/^(?:cancelar|no|dejalo|dejalo asi|olvidalo|gracias)\b/.test(n)){
+      salidaPendienteContextual=null;
+      salida.innerHTML='<div class="c query">Dale, dejamos el cálculo de salida pendiente. No modifiqué nada.</div>';
+      return true;
+    }
+    const origen=n.match(/^(?:desde\s+|salgo\s+(?:desde|de)\s+)(.+)$/);
+    if(!origen)return false;
+    const e=obtenerAgenda().find(x=>String(x.id)===String(salidaPendienteContextual.id));
+    salidaPendienteContextual=null;
+    if(!e){
+      salida.innerHTML='<div class="c query">Ya no encuentro esa actividad. No modifiqué nada.</div>';
+      return true;
+    }
+    const desde=origen[1].trim();
+    salida.innerHTML=`<div class="c query">Para ${escapar(e.titulo)}, registré en esta conversación que saldrías desde <b>${escapar(desde)}</b> y que la actividad empieza a las <b>${escapar(e.hora)}</b>${e.ubicacion?` en ${escapar(e.ubicacion)}`:''}. No tengo todavía un tiempo de viaje verificado ni tráfico en vivo, así que no puedo darte una hora de salida confiable. No agregué nada a tu agenda.</div>`;
+    return true;
+  }
+  const e=obtenerEventoContexto();
+  if(!e){
+    salida.innerHTML='<div class="c query">¿Para qué actividad querés calcular la salida? Decime cuál y reviso los datos que tengo.</div>';
+    return true;
+  }
+  recordarEventoContexto(e.id);
+  const destino=String(e.ubicacion||"").trim();
+  const medio=String(e.transporte||"").trim();
+  if(!destino){
+    salida.innerHTML=`<div class="c query">${escapar(e.titulo)} empieza a las <b>${escapar(e.hora)}</b>, pero todavía no tengo el destino registrado. ¿Dónde es? No modifiqué nada.</div>`;
+    return true;
+  }
+  salidaPendienteContextual={id:e.id};
+  salida.innerHTML=`<div class="c query">${escapar(e.titulo)} empieza a las <b>${escapar(e.hora)}</b> en <b>${escapar(destino)}</b>${medio?` y tenés registrado que vas en ${escapar(medio)}`:''}. ¿Desde dónde salís? Necesito ese dato para evaluar el traslado. Todavía no tengo tiempos de viaje ni tráfico verificados, así que no voy a inventarte una hora de salida.<div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  return true;
+}
+
 // r6.9.12: movilidad contextual. Consultar no significa cambiar el traslado.
 function consultarMovilidadActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
@@ -3045,6 +3087,7 @@ function ordenar(){
   if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
+  if(consultarSalidaContextual(texto)) return;
   if(consultarMovilidadActividad(texto)) return;
   if(consultarUbicacionActividad(texto)) return;
   if(consultarDuracionActividad(texto)) return;
