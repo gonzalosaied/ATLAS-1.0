@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.9 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.10 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.9 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.10 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.9 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.10 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2558,6 +2558,30 @@ function consultarPreparacionDeActividad(texto){
     const ultimo=obtenerEventoContexto();
     if(ultimo) candidatos=[ultimo];
   }
+  // r6.9.10: las consultas históricas usan la fecha mencionada, sin
+  // convertir una fecha pasada al año próximo como en la creación de eventos.
+  const mesesConsulta={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,
+    julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
+  const fechaEscritaConsulta=n.match(/\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b/);
+  const fechaNumericaConsulta=n.match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
+  if(fechaEscritaConsulta || fechaNumericaConsulta){
+    const m=fechaEscritaConsulta||fechaNumericaConsulta;
+    const dia=Number(m[1]);
+    const mes=fechaEscritaConsulta?mesesConsulta[m[2]]:Number(m[2]);
+    let anio=Number(m[3]||new Date().getFullYear());
+    if(anio<100)anio+=2000;
+    const fechaValida=crearFechaValidada(anio,mes-1,dia);
+    if(!fechaValida){
+      resultado.innerHTML='<div class="c query">Esa fecha no parece válida. ¿Podés revisarla? No hice cambios.</div>';
+      return true;
+    }
+    const fechaExacta=fechaLocalISO(fechaValida);
+    candidatos=candidatos.filter(e=>e.fecha===fechaExacta);
+    if(!candidatos.length){
+      resultado.innerHTML=`<div class="c query">No encontré una actividad que coincida con esa fecha (${escapar(fechaExacta)}). No hice cambios.</div>`;
+      return true;
+    }
+  }
   const fechaMencionada=/\b(?:hoy|manana|pasado manana)\b/.exec(n);
   if(fechaMencionada){
     const hoy=new Date();
@@ -2567,6 +2591,10 @@ function consultarPreparacionDeActividad(texto){
   }
   if(!candidatos.length){
     resultado.innerHTML='<div class="c query">No encontré una actividad concreta para revisar sus preparativos. ¿De qué evento hablás?</div>';
+    return true;
+  }
+  if(candidatos.length>1 && (fechaEscritaConsulta || fechaNumericaConsulta)){
+    resultado.innerHTML='<div class="c query">Encontré más de una actividad de ese tipo en la fecha indicada. ¿Me decís el horario para distinguirlas? No hice cambios.</div>';
     return true;
   }
   if(candidatos.length>1){
