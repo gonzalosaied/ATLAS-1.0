@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.13 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.14 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -325,6 +325,18 @@ hr{
 .kai-composer .composer-actions{margin-top:6px}
 .kai-composer .conversation-context.show{margin:0 0 7px}
 .jump-latest{bottom:235px!important}
+
+/* r6.9.14: barra compacta y adaptable */
+.kai-composer{padding:9px 12px 11px;border:1px solid #334155;border-radius:18px 18px 0 0}
+.composer-line{display:flex;align-items:flex-end;gap:8px}
+.kai-composer .composer-line textarea{flex:1;min-width:0;width:auto;min-height:44px;height:44px;max-height:120px;resize:none;margin:0;padding:11px 12px;line-height:21px;border-radius:18px}
+.kai-composer .composer-line button{flex:none;width:42px;height:42px;margin:1px 0;padding:0;border-radius:50%;display:grid;place-items:center;font-size:20px;cursor:pointer}
+.composer-plus{background:#273449;color:#fff;border:1px solid #52627b}
+.composer-send{background:#2563eb;color:white;border:1px solid #3b82f6}
+.composer-send.listening{background:#dc2626}
+#k{padding-bottom:185px}
+.jump-latest{bottom:165px!important}
+
 /* Atlas 1.6.5.6: navegación cómoda en conversaciones largas */
 .kai-sticky-header{position:sticky;top:0;z-index:12;background:#0f172a;box-shadow:0 5px 12px #0f172ae8;padding:9px 0;margin-top:-9px}
 .jump-latest{display:none;position:fixed;bottom:84px;right:max(14px,calc((100vw - 520px)/2 + 14px));z-index:13;width:43px;height:43px;border-radius:50%;background:#2563eb;color:white;border:1px solid #60a5fa;box-shadow:0 4px 18px #0008;font-size:24px;cursor:pointer}
@@ -413,7 +425,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.13 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.14 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -455,10 +467,10 @@ hr{
 
   <div class="kai-composer" aria-label="Escribirle a Kai">
     <div id="conversationContext" class="conversation-context"></div>
-    <textarea id="entrada" rows="2" placeholder="Escribile a Kai…" aria-label="Mensaje para Kai"></textarea>
-    <div class="composer-actions">
-      <button id="micButtonBottom" class="mic-inline" onclick="escuchar()" aria-label="Hablar con Kai">🎙️</button>
-      <button class="primary" onclick="ordenar()">Enviar a Kai</button>
+    <div class="composer-line">
+      <button type="button" class="composer-plus" onclick="mostrarAdjuntos()" aria-label="Opciones para adjuntar">+</button>
+      <textarea id="entrada" rows="1" placeholder="Escribile a Kai…" aria-label="Mensaje para Kai" oninput="actualizarComposer()"></textarea>
+      <button type="button" id="micButtonBottom" class="composer-send" onclick="accionComposer()" aria-label="Hablar con Kai" title="Hablar con Kai">🎙️</button>
     </div>
   </div>
 </section>
@@ -494,6 +506,14 @@ hr{
   <h2>Perfil</h2>
 
   <div class="c">Hogar Atlas — 5 integrantes</div>
+  <div class="c" id="lugaresGuardadosPanel">
+    <b>Privacidad y permisos · Lugares guardados</b>
+    <p class="small">Casa y trabajo se guardan solo en este navegador, después de tu autorización. No se comparten con tu familia ni se suben a GitHub.</p>
+    <div id="lugaresGuardadosVista"></div>
+    <button class="secondary" onclick="editarLugarPerfil('casa')">Configurar casa</button>
+    <button class="secondary" onclick="editarLugarPerfil('trabajo')">Configurar trabajo</button>
+  </div>
+
 
   <div class="c">
     <b>Principio Atlas</b><br>
@@ -505,7 +525,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.13 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.14 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2701,7 +2721,9 @@ function consultarSalidaContextual(texto){
       salida.innerHTML='<div class="c query">Ya no encuentro esa actividad. No modifiqué nada.</div>';
       return true;
     }
-    const desde=origen[1].trim();
+    const origenTexto=origen[1].trim();
+    const lugar=lugaresGuardados();
+    const desde=/^(?:mi\s+)?casa$/.test(origenTexto)?(lugar.casa||origenTexto):/^(?:mi\s+)?trabajo$/.test(origenTexto)?(lugar.trabajo||origenTexto):origenTexto;
     salida.innerHTML=`<div class="c query">Para ${escapar(e.titulo)}, registré en esta conversación que saldrías desde <b>${escapar(desde)}</b> y que la actividad empieza a las <b>${escapar(e.hora)}</b>${e.ubicacion?` en ${escapar(e.ubicacion)}`:''}. No tengo todavía un tiempo de viaje verificado ni tráfico en vivo, así que no puedo darte una hora de salida confiable. No agregué nada a tu agenda.</div>`;
     return true;
   }
@@ -3034,6 +3056,59 @@ function responderAlternativasConflicto(texto){
   return true;
 }
 
+
+// r6.9.14: lugares frecuentes, consentimiento explícito y control local.
+const ATLAS_LUGARES_KEY='atlas_lugares_consentidos_r6914';
+let lugarPendiente=null;
+function lugaresGuardados(){try{return JSON.parse(localStorage.getItem(ATLAS_LUGARES_KEY)||'{}')}catch(_){return {}}}
+function guardarLugares(obj){localStorage.setItem(ATLAS_LUGARES_KEY,JSON.stringify(obj));renderLugares()}
+function nombreLugar(tipo){return tipo==='casa'?'casa':'trabajo'}
+function renderLugares(){
+ const el=document.getElementById('lugaresGuardadosVista');if(!el)return;
+ const l=lugaresGuardados();
+ el.innerHTML=['casa','trabajo'].map(t=>`<div class="small" style="padding:8px 0;border-bottom:1px solid #334155"><b>${t==='casa'?'🏠 Casa':'💼 Trabajo'}:</b> ${l[t]?escapar(l[t]):'Sin dirección guardada'} ${l[t]?`<button class="secondary compact-button" onclick="eliminarLugarPerfil('${t}')">Eliminar</button>`:''}</div>`).join('');
+}
+function editarLugarPerfil(tipo){
+ s('k','nk');lugarPendiente={tipo,etapa:'direccion'};
+ document.getElementById('resultado').innerHTML=`<div class="c query">¿Qué dirección querés usar para ${nombreLugar(tipo)}? Después te pediré autorización antes de guardarla.</div>`;
+}
+function eliminarLugarPerfil(tipo){
+ const l=lugaresGuardados();if(!l[tipo])return;
+ lugarPendiente={tipo,etapa:'eliminar'};s('k','nk');
+ document.getElementById('resultado').innerHTML=`<div class="c query">¿Me autorizás a olvidar la dirección de ${nombreLugar(tipo)}? Respondé «sí» o «no».</div>`;
+}
+function gestionarLugares(texto){
+ const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,'').trim();
+ const out=document.getElementById('resultado');
+ if(lugarPendiente){
+  const p=lugarPendiente;
+  if(/^(no|cancelar|cancela|dejalo|olvidalo)$/.test(n)){lugarPendiente=null;out.innerHTML='<div class="c query">Perfecto, no cambié ningún lugar guardado.</div>';return true}
+  if(p.etapa==='direccion'){
+   const direccion=texto.trim().replace(/[.!]+$/,'');
+   if(direccion.length<5){out.innerHTML='<div class="c query">Necesito una dirección un poco más precisa, con calle y altura si la sabés. No guardé nada.</div>';return true}
+   lugarPendiente={tipo:p.tipo,etapa:'confirmar',direccion};
+   out.innerHTML=`<div class="c query">¿Me autorizás a guardar <b>${escapar(direccion)}</b> como dirección de <b>${nombreLugar(p.tipo)}</b> en este navegador? Respondé «sí» o «no».</div>`;return true;
+  }
+  if(!/^(si|sí|confirmo|autorizo|dale|guardar|guardala|borra|elimina)$/.test(n)){
+   out.innerHTML='<div class="c query">Necesito tu autorización explícita. Respondé «sí» o «no».</div>';return true;
+  }
+  const l=lugaresGuardados();
+  if(p.etapa==='eliminar'){delete l[p.tipo];guardarLugares(l);out.innerHTML=`<div class="c query">Olvidé la dirección de ${nombreLugar(p.tipo)} de este navegador.</div>`}
+  else{l[p.tipo]=p.direccion;guardarLugares(l);out.innerHTML=`<div class="c query">Guardé <b>${escapar(p.direccion)}</b> como ${nombreLugar(p.tipo)}, con tu autorización. Podés modificarla o eliminarla desde Perfil.</div>`}
+  lugarPendiente=null;return true;
+ }
+ let m=n.match(/^(?:(?:kai[, ]+)?(?:quiero|podes|podrias|necesito|vamos a|quiero que)\s+)?(?:guardar|recordar|registrar|configurar|cambiar|actualizar|modificar)\s+(?:(?:la|mi)\s+)?(?:direccion\s+(?:de|del)\s+)?(?:mi\s+)?(casa|trabajo)\b/);
+ if(m){lugarPendiente={tipo:m[1],etapa:'direccion'};out.innerHTML=`<div class="c query">¿Cuál es la dirección de ${nombreLugar(m[1])}? Te pediré permiso antes de guardarla.</div>`;return true}
+ m=n.match(/^(?:olvida|olvidate de|borra|elimina|eliminar|borrar)\s+(?:(?:la|mi)\s+)?(?:direccion\s+(?:de|del)\s+)?(?:mi\s+)?(casa|trabajo)\b/);
+ if(m){const l=lugaresGuardados();if(!l[m[1]]){out.innerHTML=`<div class="c query">No tengo una dirección de ${nombreLugar(m[1])} guardada.</div>`;return true}lugarPendiente={tipo:m[1],etapa:'eliminar'};out.innerHTML=`<div class="c query">¿Me autorizás a borrar la dirección de ${nombreLugar(m[1])}? Respondé «sí» o «no».</div>`;return true}
+ m=n.match(/^(?:(?:cual|que)\s+es\s+)?(?:la\s+)?direccion\s+(?:de\s+)?(?:mi\s+)?(casa|trabajo)\??$/);
+ if(m){const l=lugaresGuardados();out.innerHTML=`<div class="c query">${l[m[1]]?`Tu dirección guardada de ${nombreLugar(m[1])} es <b>${escapar(l[m[1]])}</b>.`:`No tengo guardada tu dirección de ${nombreLugar(m[1])}. ¿Querés configurarla?`}</div>`;return true}
+ return false;
+}
+function actualizarComposer(){const input=document.getElementById('entrada'),boton=document.getElementById('micButtonBottom');if(!input||!boton)return;const texto=!!input.value.trim();boton.textContent=texto?'➤':'🎙️';boton.setAttribute('aria-label',texto?'Enviar mensaje':'Hablar con Kai');boton.title=texto?'Enviar mensaje':'Hablar con Kai';input.style.height='44px';input.style.height=Math.min(120,Math.max(44,input.scrollHeight))+'px'}
+function accionComposer(){document.getElementById('entrada').value.trim()?ordenar():escuchar()}
+function mostrarAdjuntos(){const out=document.getElementById('resultado');archivarRespuestaActual();out.innerHTML='<div class="c info">📎 Próximamente vas a poder adjuntar fotos y facturas. Todavía no puedo leer imágenes ni guardar sus importes o vencimientos; no se adjuntó ningún archivo.</div>';desplazarConversacion()}
+
 function ordenar(){
   const entrada = document.getElementById("entrada");
   const resultado = document.getElementById("resultado");
@@ -3049,7 +3124,10 @@ function ordenar(){
   agregarMensajeUsuario(texto);
   ultimaAccion = null;
   entrada.value = "";
+  actualizarComposer();
   desplazarConversacion();
+
+  if(gestionarLugares(texto)) return;
 
   // r6.9.1: cancelar una acción rápida no confirmada, sin pedir un nuevo horario.
   const nCancelacion=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
@@ -4634,6 +4712,8 @@ function reiniciarPrueba(){
   actualizarProximo();
 }
 
+renderLugares();
+actualizarComposer();
 document.getElementById('entrada').addEventListener('keydown',event=>{
   if(event.key==='Enter' && !event.shiftKey && !event.isComposing){
     event.preventDefault();
