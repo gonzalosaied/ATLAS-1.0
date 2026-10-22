@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.10 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.11 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.10 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.11 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.10 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.11 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2680,6 +2680,58 @@ function consultarDuracionActividad(texto){
   return true;
 }
 
+// r6.9.11: consultas explícitas de ubicación, sin crear eventos.
+function consultarUbicacionActividad(texto){
+  const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
+  const pregunta=/^(?:(?:y|entonces|pero)\s+)?(?:donde\s+(?:era|es|queda|fue|va a ser|se hace)|en\s+que\s+(?:lugar|sitio|direccion)\s+(?:es|era|queda|fue|se hace)|donde\s+(?:quedamos|nos juntamos|nos reunimos)|en\s+que\s+(?:lugar|direccion)\s+(?:quedamos|nos juntamos|nos reunimos))\b/.test(n);
+  if(!pregunta)return false;
+  const salida=document.getElementById("resultado");
+  const todos=obtenerAgenda();
+  const reunion=n.match(/\breunion\s+con\s+([a-zñ]+)(?:\s+([a-zñ]+))?/);
+  const conPersona=n.match(/\b(?:con|ver a)\s+([a-zñ]+)\b/);
+  const persona=reunion?reunion[1]:(conPersona?conPersona[1]:null);
+  const tipo=/\breunion\b|\breunirnos\b|\bnos reunimos\b|\bnos juntamos\b/.test(n)?"reunion":/\b(?:turno|dentista)\b/.test(n)?"turno":null;
+  let candidatos=todos.filter(e=>{
+    const titulo=normalizar(e.titulo||"");
+    if(persona && !new RegExp("\\b"+persona+"\\b").test(titulo+" "+normalizar(e.persona||"")))return false;
+    if(tipo==="reunion" && !/\breunion\b/.test(titulo))return false;
+    if(tipo==="turno" && !/\bturno\b|\bdentista\b/.test(titulo))return false;
+    return true;
+  });
+  const fechaTexto=n.match(/\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b/);
+  if(fechaTexto){
+    const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const dia=Number(fechaTexto[1]), mes=meses.indexOf(fechaTexto[2])+1, anio=Number(fechaTexto[3]||new Date().getFullYear());
+    const fecha=crearFechaValidada(anio,mes-1,dia);
+    candidatos=fecha?candidatos.filter(e=>e.fecha===fechaLocalISO(fecha)):[];
+  }else if(/\b(?:hoy|manana|ayer)\b/.test(n)){
+    const d=new Date();
+    d.setDate(d.getDate()+(/\bmanana\b/.test(n)?1:/\bayer\b/.test(n)?-1:0));
+    candidatos=candidatos.filter(e=>e.fecha===fechaLocalISO(d));
+  }
+  if(!persona && !tipo && !fechaTexto && !/\b(?:hoy|manana|ayer)\b/.test(n)){
+    const contexto=obtenerEventoContexto();
+    candidatos=contexto?[contexto]:[];
+  }
+  if(!candidatos.length){
+    salida.innerHTML='<div class="c query">No encontré esa actividad en tu agenda. ¿Me decís el nombre o la fecha? No hice cambios.</div>';
+    return true;
+  }
+  if(candidatos.length>1){
+    const futuras=candidatos.filter(e=>momentoEvento(e,true).getTime()>=Date.now()).sort((a,b)=>momentoEvento(a)-momentoEvento(b));
+    if(futuras.length===1 || (futuras.length>1 && futuras[0].fecha!==futuras[1].fecha)){
+      candidatos=[futuras[0]];
+    }else{
+      salida.innerHTML=`<div class="c query">Encontré varias actividades que podrían coincidir. ¿De qué fecha hablás? ${candidatos.slice(0,5).map(e=>`<p>${escapar(e.titulo)} · ${escapar(fechaBonita(e.fecha))} ${escapar(e.hora)}</p>`).join("")}No hice cambios.</div>`;
+      return true;
+    }
+  }
+  const e=candidatos[0];
+  recordarEventoContexto(e.id);
+  salida.innerHTML=`<div class="c query">${e.ubicacion?`${escapar(e.titulo)} es en <b>${escapar(e.ubicacion)}</b>.`:`Todavía no tengo una ubicación registrada para ${escapar(e.titulo)}.`}<div class="small">Es una consulta: no guardé ni modifiqué nada.</div></div>`;
+  return true;
+}
+
 function consultarReferenciaConversacional(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g, "").trim();
   // Solo preguntas elípticas: una actividad mencionada explícitamente debe buscarse
@@ -2944,6 +2996,7 @@ function ordenar(){
   if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
+  if(consultarUbicacionActividad(texto)) return;
   if(consultarDuracionActividad(texto)) return;
   if(consultarReferenciaConversacional(texto)) return;
   // Preguntas sobre un conflicto pendiente conservan el borrador y reciben opciones.
