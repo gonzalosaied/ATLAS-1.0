@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.14.1 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.14.2 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -425,7 +425,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.14.1 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.14.2 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -525,7 +525,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.14.1 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.14.2 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -3063,6 +3063,23 @@ let lugarPendiente=null;
 function lugaresGuardados(){try{return JSON.parse(localStorage.getItem(ATLAS_LUGARES_KEY)||'{}')}catch(_){return {}}}
 function guardarLugares(obj){localStorage.setItem(ATLAS_LUGARES_KEY,JSON.stringify(obj));renderLugares()}
 function nombreLugar(tipo){return tipo==='casa'?'casa':'trabajo'}
+// r6.9.14.2: extraer únicamente el dato de dirección de respuestas conversacionales.
+// No modificar nombres de calles: quitar solamente introducciones explícitas al dato.
+function limpiarDireccionLugar(texto){
+ let d=String(texto||'').trim().replace(/[.!\s]+$/g,'').trim();
+ const prefijos=[
+  /^(?:(?:la\s+)?nueva\s+direcci[oó]n|(?:la\s+)?direcci[oó]n\s+(?:de\s+)?(?:mi\s+)?(?:casa|trabajo)|mi\s+(?:casa|trabajo))\s+(?:es|queda|est[aá]\s+en|ser[ií]a)\s*[:,-]?\s*/i,
+  /^(?:quiero\s+(?:que\s+)?(?:guardar|recordar|cambiar|actualizar)\s+(?:la\s+)?direcci[oó]n\s+(?:de\s+)?(?:mi\s+)?(?:casa|trabajo)\s+(?:a|por)\s+)/i,
+  /^(?:queda|est[aá]|vivo|vivimos|trabajo|salgo)\s+en\s+/i,
+  /^(?:es|ser[ií]a|en)\s*[:,-]?\s+/i
+ ];
+ for(let i=0;i<3;i++){
+  const anterior=d;
+  for(const patron of prefijos){if(patron.test(d)){d=d.replace(patron,'').trim();break}}
+  if(d===anterior)break;
+ }
+ return d.replace(/^[\s:,-]+/,'').replace(/[.!\s]+$/g,'').trim();
+}
 function renderLugares(){
  const el=document.getElementById('lugaresGuardadosVista');if(!el)return;
  const l=lugaresGuardados();
@@ -3084,7 +3101,7 @@ function gestionarLugares(texto){
   const p=lugarPendiente;
   if(/^(no|cancelar|cancela|dejalo|olvidalo)$/.test(n)){lugarPendiente=null;out.innerHTML='<div class="c query">Perfecto, no cambié ningún lugar guardado.</div>';return true}
   if(p.etapa==='direccion'){
-   const direccion=texto.trim().replace(/[.!]+$/,'');
+   const direccion=limpiarDireccionLugar(texto);
    if(direccion.length<5){out.innerHTML='<div class="c query">Necesito una dirección un poco más precisa, con calle y altura si la sabés. No guardé nada.</div>';return true}
    lugarPendiente={tipo:p.tipo,etapa:'confirmar',direccion};
    out.innerHTML=`<div class="c query">¿Me autorizás a guardar <b>${escapar(direccion)}</b> como dirección de <b>${nombreLugar(p.tipo)}</b> en este navegador? Respondé «sí» o «no».</div>`;return true;
@@ -4734,4 +4751,3 @@ document.querySelector("#chatHistory .chat-bubble")?.replaceChildren(document.cr
 
 </body>
 </html>
-<!-- Solicitar nuevo despliegue de Atlas r6.9.14.1 -->
