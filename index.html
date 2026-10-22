@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Atlas v1.6.5.10-r6.9.5 — intención y continuidad</title>
+<title>Atlas v1.6.5.10-r6.9.6 — intención y continuidad</title>
 
 <style>
 *{box-sizing:border-box}
@@ -413,7 +413,7 @@ hr{
     <div class="home-eyebrow" id="homeFecha">TU ESPACIO PERSONAL</div>
     <h1 id="homeSaludo">Hola, Gonza 👋</h1>
     <p>Vos hablá. Atlas se encarga de ordenar.</p>
-    <span class="home-build">Atlas v1.6.5.10-r6.9.5 · Vista inicial</span>
+    <span class="home-build">Atlas v1.6.5.10-r6.9.6 · Vista inicial</span>
   </div>
   <div class="home-section-head"><div><span class="home-section-kicker">TU PRESENTE</span><h2>Lo importante ahora</h2></div><span class="home-live-dot" aria-label="Datos de tu agenda">● Agenda</span></div>
   <div class="home-next-card" id="proximoEvento" aria-live="polite">
@@ -505,7 +505,7 @@ hr{
   <div class="c">
     <b>Versión de prueba</b><br>
     <span class="small">
-      Atlas v1.6.5.10-r6.9.5 — corrección de intención y continuidad conversacional.
+      Atlas v1.6.5.10-r6.9.6 — corrección de intención y continuidad conversacional.
     </span>
   </div>
 </section>
@@ -2243,6 +2243,71 @@ function continuarAccionRapida(texto){
 }
 
 
+
+// r6.9.6: edición de avisos con referencia conversacional y confirmación.
+let ultimoAvisoConsultado = null;
+let cambioAvisoPendiente = null;
+function cancelarCambioAviso(){
+  cambioAvisoPendiente=null;
+  document.getElementById("resultado").innerHTML='<div class="c info">Perfecto, conservé el recordatorio anterior. No hice cambios.</div>';
+}
+function confirmarCambioAviso(){
+  const p=cambioAvisoPendiente;
+  if(!p)return;
+  const agenda=obtenerAgenda(), e=agenda.find(x=>String(x.id)===String(p.id));
+  if(!e){cambioAvisoPendiente=null;document.getElementById("resultado").innerHTML='<div class="c warn">No encontré la actividad. No modifiqué nada.</div>';return;}
+  const actuales=normalizarAvisos(e);
+  if(!actuales.includes(p.anterior)){
+    cambioAvisoPendiente=null;
+    document.getElementById("resultado").innerHTML='<div class="c warn">El aviso original cambió desde la propuesta. Volvé a consultarlo antes de modificarlo.</div>';return;
+  }
+  const nuevos=[...new Set([...actuales.filter(x=>x!==p.anterior),p.nuevo])].sort((a,b)=>b-a);
+  const actualizado={...e,avisosMinutos:nuevos,avisoMinutos:nuevos[0]??60};
+  guardarAgenda(agenda.map(x=>String(x.id)===String(e.id)?actualizado:x));
+  ultimoAvisoConsultado={id:e.id,minutos:p.nuevo};
+  cambioAvisoPendiente=null;
+  recordarEventoContexto(e.id);
+  document.getElementById("resultado").innerHTML=`<div class="c success"><b>✓ Recordatorio actualizado</b><p>${escapar(e.titulo)}: ahora ${escapar(etiquetaAviso(p.nuevo).toLowerCase())}.</p><div class="small">Reemplacé el aviso anterior, sin duplicarlo. La entrega depende de las notificaciones disponibles en Atlas.</div></div>`;
+  renderAgenda();actualizarProximo();
+}
+function horaAvisoEvento(e,minutos){
+  const instante=new Date(momentoEvento(e,false).getTime()-minutos*60000);
+  return String(instante.getHours()).padStart(2,"0")+":"+String(instante.getMinutes()).padStart(2,"0");
+}
+function procesarCambioAviso(texto){
+  const n=normalizar(texto).trim();
+  const resultado=document.getElementById("resultado");
+  if(cambioAvisoPendiente){
+    if(/^(?:si|si cambiar|confirmar|confirmo|dale|hacelo|cambialo|guardar)$/.test(n)){confirmarCambioAviso();return true;}
+    if(/^(?:no|no gracias|mejor no|cancelar|dejalo como esta|dejalo como estaba)$/.test(n)){cancelarCambioAviso();return true;}
+    // Preguntas nuevas no quedan atrapadas en una confirmación.
+    cambioAvisoPendiente=null;
+  }
+  const pideCambio=/\b(?:cambia|cambiar|modifica|modificar|ajusta|ajustar|reprograma)\b/.test(n)
+    && /\b(?:recordatorio|aviso)\b/.test(n)
+    && /\b(?:antes|minutos?|horas?)\b/.test(n);
+  if(!pideCambio)return false;
+  const nuevo=minutosRecordatorioNatural(texto);
+  if(nuevo===null){
+    resultado.innerHTML='<div class="c query">¿Cuánto tiempo antes querés el recordatorio? Por ejemplo, «30 minutos antes». No modifiqué nada.</div>';return true;
+  }
+  const contexto=ultimoAvisoConsultado;
+  const e=contexto?obtenerAgenda().find(x=>String(x.id)===String(contexto.id)):null;
+  if(!e){
+    resultado.innerHTML='<div class="c query">¿De qué actividad querés cambiar el recordatorio? Primero consultá sus avisos para seleccionar el correcto. No modifiqué nada.</div>';return true;
+  }
+  const actuales=normalizarAvisos(e);
+  if(!actuales.includes(contexto.minutos)){
+    resultado.innerHTML='<div class="c warn">El aviso que consultaste ya no figura en esa actividad. Volvé a consultarlo. No modifiqué nada.</div>';return true;
+  }
+  if(contexto.minutos===nuevo){
+    resultado.innerHTML='<div class="c query">Ese recordatorio ya está configurado así. No modifiqué nada.</div>';return true;
+  }
+  cambioAvisoPendiente={id:e.id,anterior:contexto.minutos,nuevo};
+  resultado.innerHTML=`<div class="c info"><b>¿Querés reemplazar este recordatorio?</b><p>${escapar(e.titulo)} · ${escapar(fechaBonita(e.fecha))} a las ${escapar(e.hora)}</p><p>Actual: ${escapar(etiquetaAviso(contexto.minutos))} (${horaAvisoEvento(e,contexto.minutos)})</p><p>Nuevo: ${escapar(etiquetaAviso(nuevo))} (${horaAvisoEvento(e,nuevo)})</p><div class="small">No guardé ningún cambio todavía.</div><button class="primary" onclick="confirmarCambioAviso()">Sí, reemplazar</button><button class="secondary" onclick="cancelarCambioAviso()">No, conservar</button></div>`;
+  return true;
+}
+
 // r6.9.4: distinguir la consulta de avisos de una consulta general de agenda.
 function consultarAvisosActividad(texto){
   const n=normalizar(texto).replace(/^[¿?¡!\s]+|[¿?¡!\s]+$/g,"").trim();
@@ -2287,6 +2352,7 @@ function consultarAvisosActividad(texto){
   const e=candidatos[0];
   recordarEventoContexto(e.id);
   const avisos=normalizarAvisos(e);
+  ultimoAvisoConsultado=avisos.length===1?{id:e.id,minutos:avisos[0]}:null;
   const detalles=avisos.length?avisos.map(m=>{
     // Los avisos se calculan desde el INICIO de la actividad, no desde su final.
     const instante=new Date(momentoEvento(e,false).getTime()-m*60000);
@@ -2691,6 +2757,7 @@ function ordenar(){
     prepararEliminacion(interpretar(texto));
     return;
   }
+  if(procesarCambioAviso(texto)) return;
   if(consultarAvisosActividad(texto)) return;
   if(proponerAportePreparacion(texto)) return;
   if(consultarPreparacionDeActividad(texto)) return;
